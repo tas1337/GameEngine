@@ -169,13 +169,13 @@ impl World {
             static RAIN_TICK: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
             let tick = RAIN_TICK.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             
-            let rain_positions: Vec<Vec3> = if tick % 3 == 0 {  // Only spawn every 3rd tick
+            let rain_positions: Vec<Vec3> = if tick % 2 == 0 {  // Spawn every 2nd tick
                 clouds.iter()
                     .filter(|cloud| cloud.is_raining)
-                    .filter(|cloud| cloud.position.x.abs() <= GROUND_SIZE + 20.0 && cloud.position.z.abs() <= GROUND_SIZE + 20.0)
+                    .filter(|cloud| cloud.position.x.abs() <= GROUND_SIZE + 30.0 && cloud.position.z.abs() <= GROUND_SIZE + 30.0)
                     .flat_map(|cloud| {
-                        // Spawn only 2 rain drops per tick (instead of 3)
-                        (0..2).map(move |i| {
+                        // Spawn 5 rain drops per tick for visible rain
+                        (0..5).map(move |i| {
                             // Deterministic "random" based on cloud position and tick
                             let seed_base = (cloud.position.x * 1000.0 + cloud.position.z * 100.0 + i as f32 * 10.0 + tick as f32) as u32;
                             let r1 = ((seed_base.wrapping_mul(1103515245).wrapping_add(12345)) >> 16) as f32 / 65535.0;
@@ -389,8 +389,8 @@ impl World {
         
         // Limit rain particles to prevent accumulation
         let rain_count = particles.iter().filter(|p| p.owner.is_none()).count();
-        if rain_count >= 200 {
-            return;  // Max 200 rain particles at a time
+        if rain_count >= 2000 {
+            return;  // Max 2000 rain particles at a time
         }
         
         // Check capacity

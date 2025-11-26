@@ -95,8 +95,8 @@
             color: var(--hl-text-dim);
             margin-bottom: 40px;
             text-align: center;
-            line-height: 2;
-            font-size: 14px;
+            line-height: 2.2;
+            font-size: 16px;
             font-weight: 400;
             letter-spacing: 1px;
         }
@@ -105,16 +105,16 @@
             color: var(--hl-text);
             font-weight: 500;
             background: rgba(255,153,0,0.15);
-            padding: 2px 8px;
+            padding: 3px 10px;
             border-radius: 3px;
         }
 
         #play-btn {
             font-family: 'Roboto Condensed', 'Roboto', sans-serif;
-            font-size: 22px;
+            font-size: 24px;
             font-weight: 700;
             letter-spacing: 3px;
-            padding: 16px 64px;
+            padding: 18px 72px;
             background: var(--hl-orange);
             color: #000;
             border: none;
@@ -140,9 +140,8 @@
             left: 50%;
             transform: translateX(-50%);
             background: var(--hl-bg);
-            padding: 12px 24px;
-            border-left: 3px solid var(--hl-orange);
-            font-size: 15px;
+            padding: 14px 28px;
+            font-size: 17px;
             color: var(--hl-text);
             z-index: 500;
             display: none;
@@ -151,10 +150,10 @@
         #pickup-prompt kbd {
             background: var(--hl-orange);
             color: #000;
-            padding: 2px 8px;
+            padding: 3px 10px;
             font-family: 'Roboto', sans-serif;
             font-weight: 700;
-            font-size: 13px;
+            font-size: 15px;
             margin: 0 4px;
         }
 
@@ -165,9 +164,8 @@
             left: 50%;
             transform: translateX(-50%);
             background: var(--hl-bg);
-            padding: 10px 20px;
-            border-left: 3px solid var(--hl-orange);
-            font-size: 13px;
+            padding: 12px 24px;
+            font-size: 15px;
             color: var(--hl-text);
             z-index: 500;
             display: none;
@@ -176,10 +174,10 @@
         #held-item kbd {
             background: var(--hl-orange);
             color: #000;
-            padding: 2px 6px;
+            padding: 3px 8px;
             font-family: 'Roboto', sans-serif;
             font-weight: 700;
-            font-size: 11px;
+            font-size: 13px;
             margin: 0 3px;
         }
 
@@ -189,11 +187,10 @@
             top: 10px;
             left: 10px;
             background: var(--hl-bg);
-            padding: 14px 16px;
-            border-left: 3px solid var(--hl-orange);
-            font-size: 12px;
+            padding: 16px 18px;
+            font-size: 14px;
             z-index: 100;
-            min-width: 200px;
+            min-width: 220px;
             max-width: calc(50vw - 20px);
             max-height: 90vh;
             overflow-y: auto;
@@ -205,25 +202,24 @@
             bottom: 10px;
             right: 10px;
             background: var(--hl-bg);
-            padding: 14px 16px;
-            border-left: 3px solid var(--hl-orange);
-            font-size: 12px;
+            padding: 16px 18px;
+            font-size: 14px;
             z-index: 100;
-            min-width: 200px;
+            min-width: 220px;
             max-width: calc(50vw - 20px);
         }
 
         @media (max-width: 768px) {
             #info {
-                font-size: 10px;
-                padding: 10px 12px;
+                font-size: 12px;
+                padding: 12px 14px;
                 min-width: auto;
                 max-width: calc(100vw - 20px);
             }
             
             #controls {
-                font-size: 10px;
-                padding: 10px 12px;
+                font-size: 12px;
+                padding: 12px 14px;
                 bottom: 10px;
                 min-width: auto;
                 max-width: calc(100vw - 20px);
@@ -234,23 +230,23 @@
             }
             
             #controls button {
-                padding: 8px !important;
-                font-size: 10px;
+                padding: 10px !important;
+                font-size: 12px;
             }
             
             #info h2, #controls h2 {
-                font-size: 12px !important;
+                font-size: 13px !important;
             }
             
             #info p, #controls label {
-                font-size: 9px;
+                font-size: 11px;
             }
         }
 
         #info h2 {
-            margin: 0 0 12px 0;
+            margin: 0 0 14px 0;
             font-family: 'Roboto Condensed', 'Roboto', sans-serif;
-            font-size: 13px;
+            font-size: 15px;
             font-weight: 700;
             color: var(--hl-orange);
             text-transform: uppercase;
@@ -258,8 +254,8 @@
         }
 
         #info p {
-            margin: 4px 0;
-            line-height: 1.5;
+            margin: 5px 0;
+            line-height: 1.6;
             color: var(--hl-text-dim);
         }
 
@@ -275,9 +271,9 @@
         }
 
         #controls h2 {
-            margin: 0 0 12px 0;
+            margin: 0 0 14px 0;
             font-family: 'Roboto Condensed', 'Roboto', sans-serif;
-            font-size: 13px;
+            font-size: 15px;
             font-weight: 700;
             color: var(--hl-orange);
             text-transform: uppercase;
@@ -286,32 +282,32 @@
 
         #controls label {
             display: block;
-            margin: 8px 0 3px 0;
+            margin: 10px 0 4px 0;
             color: var(--hl-text-dim);
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 400;
         }
 
         #controls input[type="range"] {
             width: 100%;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
             accent-color: var(--hl-orange);
-            height: 4px;
+            height: 6px;
         }
 
         #controls button {
             font-family: 'Roboto', sans-serif;
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 1px;
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             background: var(--hl-danger);
             color: #fff;
             border: none;
             cursor: pointer;
-            margin-top: 10px;
+            margin-top: 12px;
             transition: background 0.15s ease;
         }
 
@@ -380,21 +376,21 @@
         .player-rank-label {
             position: absolute;
             font-family: 'Roboto Condensed', 'Roboto', sans-serif;
-            font-size: 20px;
+            font-size: 22px;
             font-weight: 700;
             color: #fff;
             text-shadow: 0 1px 3px rgba(0,0,0,0.8);
             transform: translate(-50%, -100%);
             white-space: nowrap;
             pointer-events: none;
-            padding: 4px 10px;
+            padding: 5px 12px;
             background: rgba(0, 0, 0, 0.7);
         }
 
-        .player-rank-label.rank-1 { color: var(--hl-gold); font-size: 26px; background: rgba(255,215,0,0.15); }
-        .player-rank-label.rank-2 { color: var(--hl-silver); font-size: 23px; background: rgba(160,160,160,0.1); }
-        .player-rank-label.rank-3 { color: var(--hl-bronze); font-size: 21px; background: rgba(205,127,50,0.1); }
-        .player-rank-label.is-me { color: var(--hl-orange); border-left: 3px solid var(--hl-orange); }
+        .player-rank-label.rank-1 { color: var(--hl-gold); font-size: 28px; background: rgba(255,215,0,0.15); }
+        .player-rank-label.rank-2 { color: var(--hl-silver); font-size: 25px; background: rgba(160,160,160,0.1); }
+        .player-rank-label.rank-3 { color: var(--hl-bronze); font-size: 23px; background: rgba(205,127,50,0.1); }
+        .player-rank-label.is-me { color: var(--hl-orange); background: rgba(255,153,0,0.2); }
 
         /* Leaderboard panel - flat HL */
         #leaderboard {
@@ -402,18 +398,17 @@
             top: 10px;
             right: 10px;
             background: var(--hl-bg);
-            border-left: 3px solid var(--hl-gold);
-            padding: 16px;
-            font-size: 14px;
+            padding: 18px;
+            font-size: 15px;
             color: var(--hl-text);
             z-index: 500;
-            min-width: 260px;
+            min-width: 280px;
         }
 
         #leaderboard h3 {
-            margin: 0 0 14px 0;
+            margin: 0 0 16px 0;
             font-family: 'Roboto Condensed', 'Roboto', sans-serif;
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 700;
             text-align: left;
             color: var(--hl-gold);
@@ -424,31 +419,30 @@
         #leaderboard-list {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 8px;
         }
 
         .leaderboard-entry {
             display: flex;
             justify-content: space-between;
-            padding: 8px 10px;
+            padding: 10px 12px;
             background: rgba(255, 255, 255, 0.03);
-            font-size: 13px;
-            border-left: 2px solid transparent;
+            font-size: 15px;
         }
 
-        .leaderboard-entry.rank-1 { color: var(--hl-gold); background: rgba(255, 215, 0, 0.08); border-left-color: var(--hl-gold); font-size: 15px; }
-        .leaderboard-entry.rank-2 { color: var(--hl-silver); background: rgba(160, 160, 160, 0.05); border-left-color: var(--hl-silver); font-size: 14px; }
-        .leaderboard-entry.rank-3 { color: var(--hl-bronze); background: rgba(205, 127, 50, 0.05); border-left-color: var(--hl-bronze); }
-        .leaderboard-entry.is-me { background: rgba(255, 153, 0, 0.15); border-left-color: var(--hl-orange); }
+        .leaderboard-entry.rank-1 { color: var(--hl-gold); background: rgba(255, 215, 0, 0.1); font-size: 17px; }
+        .leaderboard-entry.rank-2 { color: var(--hl-silver); background: rgba(160, 160, 160, 0.06); font-size: 16px; }
+        .leaderboard-entry.rank-3 { color: var(--hl-bronze); background: rgba(205, 127, 50, 0.06); }
+        .leaderboard-entry.is-me { background: rgba(255, 153, 0, 0.18); }
 
-        .leaderboard-rank { font-weight: 700; margin-right: 12px; min-width: 32px; }
+        .leaderboard-rank { font-weight: 700; margin-right: 14px; min-width: 36px; }
         .leaderboard-id { flex: 1; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
-        .leaderboard-score { font-weight: 700; margin-left: 12px; min-width: 30px; text-align: right; }
+        .leaderboard-score { font-weight: 700; margin-left: 14px; min-width: 36px; text-align: right; }
 
         #my-rank {
-            font-size: 13px;
+            font-size: 15px;
             color: var(--hl-orange);
-            padding: 10px;
+            padding: 12px;
             background: rgba(255, 153, 0, 0.1);
             text-align: center;
             font-weight: 500;
@@ -456,15 +450,14 @@
 
         /* Status indicators */
         .status-panel {
-            margin-top: 10px;
-            padding: 10px;
-            background: rgba(255, 153, 0, 0.08);
-            border-left: 2px solid var(--hl-success);
+            margin-top: 12px;
+            padding: 12px;
+            background: rgba(76, 175, 80, 0.08);
         }
 
         .status-panel p {
-            margin: 3px 0 !important;
-            font-size: 10px;
+            margin: 4px 0 !important;
+            font-size: 12px;
             color: var(--hl-success) !important;
             font-weight: 500;
         }
@@ -563,7 +556,7 @@
     <div id="controls" class="collapsible">
         <h2 class="collapse-header" onclick="toggleCollapse(this.parentElement)">PARTICLES ▼</h2>
         <label>Spawn Rate: <span id="spawn-rate-val">50</span>/f</label>
-        <input type="range" id="spawn-rate" min="0" max="100" value="50" step="5">
+        <input type="range" id="spawn-rate" min="0" max="500" value="50" step="10">
         
         <label>Size: <span id="size-val">0.14</span></label>
         <input type="range" id="particle-size" min="0.01" max="0.3" value="0.14" step="0.01">

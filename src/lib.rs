@@ -212,8 +212,8 @@ impl GameState {
         // Create clouds (20 voxel/Minecraft style clouds) - fallback for solo mode
         let clouds = CloudSystem::new(20, 100.0);
         
-        // Create box mesh for pickable objects (BIG CUBE)
-        let box_mesh = Mesh::cube(1.0);  // Unit cube, will be scaled to 2x2x2 when rendered
+        // Create box mesh for pickable objects - COMPANION CUBE from GLTF!
+        let box_mesh = crate::assets::companion_cube();  // Loaded from GLTF at compile time
         let box_vertex_data = vertex_data_interleaved(&box_mesh.vertices);
         let box_vbo = GLBuffer::new(gl, GL::ARRAY_BUFFER)?;
         box_vbo.set_data(gl, &box_vertex_data, GL::STATIC_DRAW);
@@ -1498,8 +1498,8 @@ impl GameState {
     fn spawn_particle_burst(&mut self, count: u32) {
         use std::f32::consts::PI;
         
-        // Cap at 100 particles per frame MAX for performance
-        let capped_count = count.min(100);
+        // Cap at 500 particles per frame MAX for performance
+        let capped_count = count.min(500);
         
         for _ in 0..capped_count {
             let angle = js_sys::Math::random() as f32 * PI * 2.0;
@@ -1545,8 +1545,8 @@ pub fn set_spawn_rate(rate: u32) {
     unsafe {
         if let Some(state_ref) = &GAME_STATE_REF {
             if let Ok(mut state) = state_ref.try_borrow_mut() {
-                // Cap at 100 particles per frame MAX
-                state.spawn_rate = rate.min(100);
+                // Cap at 500 particles per frame MAX
+                state.spawn_rate = rate.min(500);
             }
         }
     }
