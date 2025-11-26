@@ -16,6 +16,9 @@ pub struct Player {
     #[serde(skip, default = "default_instant")]
     pub last_update: Instant,
     
+    #[serde(skip, default = "default_instant")]
+    pub server_override_until: Instant,
+    
     #[serde(skip, default = "default_addr")]
     pub addr: SocketAddr,
 }
@@ -37,6 +40,7 @@ impl Player {
             velocity: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
             score: 0,  // Start with 0 points
             last_update: Instant::now(),
+            server_override_until: Instant::now(),
             addr,
         }
     }

@@ -40,17 +40,8 @@ pub fn companion_cube() -> Mesh {
         // Create vertices with scaled positions
         // Use Portal-style colors: gray base with pink heart accent
         for i in 0..positions.len() {
-            // Use UV coordinates to determine color (heart area vs body)
-            let u = uvs[i].0;
-            let v = uvs[i].1;
-            
-            // Pink accent for heart areas (center of texture), gray for body
-            let is_heart = u > 0.3 && u < 0.7 && v > 0.3 && v < 0.7;
-            let color = if is_heart {
-                [0.95, 0.4, 0.6, 1.0]  // Pink heart
-            } else {
-                [0.6, 0.6, 0.65, 1.0]  // Gray body
-            };
+            // Actual color will now come from the bound base-color texture.
+            let color = [1.0, 1.0, 1.0, 1.0];
             
             all_vertices.push(Vertex::new(
                 [positions[i].0 * scale, positions[i].1 * scale, positions[i].2 * scale],

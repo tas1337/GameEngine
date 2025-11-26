@@ -244,8 +244,14 @@ impl NetworkManager {
     
     /// Interpolate all values towards targets (call every frame)
     pub fn interpolate(&mut self, lerp_factor: f32) {
-        // Smooth time interpolation
-        self.server_time = self.server_time + (self.target_server_time - self.server_time) * lerp_factor;
+        // Smooth time interpolation on a circular range [0,1)
+        let mut delta = self.target_server_time - self.server_time;
+        if delta > 0.5 {
+            delta -= 1.0;
+        } else if delta < -0.5 {
+            delta += 1.0;
+        }
+        self.server_time = (self.server_time + delta * lerp_factor).rem_euclid(1.0);
         
         // Smooth player interpolation
         for player in &mut self.remote_players {

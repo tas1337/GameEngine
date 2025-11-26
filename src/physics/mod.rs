@@ -8,7 +8,7 @@ pub use rigidbody::*;
 
 use crate::math::Vec3;
 
-pub const GRAVITY: Vec3 = Vec3 { x: 0.0, y: -80.0, z: 0.0 };  // VERY fast falling!
+pub const GRAVITY: Vec3 = Vec3 { x: 0.0, y: -320.0, z: 0.0 };  // Quadruple fall speed for snappy jumps
 
 /// Simple AABB (Axis-Aligned Bounding Box)
 #[derive(Debug, Clone, Copy)]

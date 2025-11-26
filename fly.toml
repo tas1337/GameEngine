@@ -1,44 +1,40 @@
-# Fly.io config - ONE app with BOTH frontend + backend!
-# CHEAPEST deployment option!
+# fly.toml app configuration file generated for game-engine-holy-wildflower-6492 on 2025-11-26T04:37:03-05:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "game-engine"
+app = 'game-engine-holy-wildflower-6492'
+primary_region = 'iad'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
 
 [env]
-  SERVER_ADDR = "0.0.0.0:9001"
-  RUST_LOG = "info"
+  RUST_LOG = 'info'
+  SERVER_ADDR = '0.0.0.0:9001'
 
-# HTTP service (frontend on port 80)
 [[services]]
+  protocol = 'tcp'
   internal_port = 80
-  protocol = "tcp"
 
   [[services.ports]]
-    handlers = ["http"]
     port = 80
+    handlers = ['http']
     force_https = true
 
   [[services.ports]]
-    handlers = ["tls", "http"]
     port = 443
+    handlers = ['tls', 'http']
 
-# WebSocket service (backend on port 9001)
 [[services]]
+  protocol = 'tcp'
   internal_port = 9001
-  protocol = "tcp"
 
   [[services.ports]]
     port = 9001
+    handlers = ['tls', 'http']
+    force_https = false
 
-# FREE TIER! Single shared CPU
-[vm]
-  size = "shared-cpu-1x"
-  memory = "256mb"
-
-# Keep it running on single instance (cheapest)
-[scaling]
-  min_machines = 1
-  max_machines = 1
-
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '256mb'

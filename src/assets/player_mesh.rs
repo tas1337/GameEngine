@@ -12,7 +12,8 @@ impl PlayerMesh {
         let mut indices = Vec::new();
         
         let half_height = height / 2.0;
-        let player_color = [0.2, 0.5, 0.8, 1.0]; // Blue player
+        // Keep mesh color neutral so per-instance tint controls the look
+        let player_color = [1.0, 1.0, 1.0, 1.0];
         
         // Top hemisphere
         for ring in 0..=rings {

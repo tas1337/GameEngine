@@ -545,6 +545,7 @@
             <p><strong id="fps-counter">FPS: --</strong></p>
             <p id="frame-time">Frame: --ms</p>
             <p id="particle-count">Particles: --</p>
+            <p id="rain-status" style="color: var(--hl-muted); font-size: 0.85rem;">Server rain FX disabled (performance mode)</p>
             <p id="visible-count">Visible: --</p>
             <p id="culled-count">Culled: --</p>
             <p id="draw-calls">Draw Calls: --</p>
@@ -566,12 +567,6 @@
         
         <label>Lifetime: <span id="lifetime-val">2.5</span>s</label>
         <input type="range" id="particle-lifetime" min="0.5" max="10" value="2.5" step="0.5">
-        
-        <div class="status-panel">
-            <p>GPU INSTANCING: ACTIVE</p>
-            <p>MULTI-CORE: ACTIVE</p>
-            <p>SHADOWS: ON</p>
-        </div>
         
         <button id="pause-btn" class="pause-btn">PAUSE</button>
         <button id="clear-particles">CLEAR ALL</button>

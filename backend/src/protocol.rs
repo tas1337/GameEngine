@@ -136,3 +136,17 @@ pub struct ParticleData {
     pub lifetime: f32,
 }
 
+// Basic math helpers for Vec3 (minimal set for server physics)
+impl std::ops::Div<f32> for Vec3 {
+    type Output = Self;
+
+    fn div(self, rhs: f32) -> Self::Output {
+        let inv = if rhs.abs() > 0.00001 { 1.0 / rhs } else { 0.0 };
+        Self {
+            x: self.x * inv,
+            y: self.y * inv,
+            z: self.z * inv,
+        }
+    }
+}
+

@@ -223,10 +223,18 @@ async fn handle_client_message(msg: ClientMessage, player_id: Uuid, state: &Serv
     match msg {
         ClientMessage::PlayerUpdate { position, rotation, velocity } => {
             if let Some(mut player) = state.players.get_mut(&player_id) {
-                player.position = position;
+                let now = std::time::Instant::now();
+                if now >= player.server_override_until {
+                    player.position = position;
+                } else {
+                    let blend = 0.5;
+                    player.position.x += (position.x - player.position.x) * blend;
+                    player.position.y += (position.y - player.position.y) * blend;
+                    player.position.z += (position.z - player.position.z) * blend;
+                }
                 player.rotation = rotation;
                 player.velocity = velocity;
-                player.last_update = std::time::Instant::now();
+                player.last_update = now;
             }
             // Update held object position (pass rotation so box is in front of player)
             state.world.update_held_object(player_id, position, rotation);
@@ -276,8 +284,9 @@ async fn world_update_loop(state: ServerState) {
         // Update physics
         state.world.update(1.0 / state.tick_rate as f32);
         
-        // Push players away from held boxes (prevents clipping)
+        // Push players away from boxes (held + flying)
         state.world.push_players_from_held_boxes(&state.players);
+        state.world.push_players_from_moving_boxes(&state.players);
         
         // Update spatial hash
         state.spatial_hash.update(&state.players, &state.world);

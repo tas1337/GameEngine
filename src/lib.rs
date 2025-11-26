@@ -49,6 +49,8 @@ pub struct GameState {
     
     // Rendering resources
     shader_program: ShaderProgram,
+    cube_texture: Texture,
+    white_texture: Texture,
     particle_vbo: GLBuffer,
     particle_ibo: GLBuffer,
     particle_index_count: i32,
@@ -119,6 +121,10 @@ pub struct GameState {
     pub particle_size: f32,
     pub particle_speed: f32,
     pub particle_lifetime: f32,
+    
+    // Server-driven rain
+    server_rain_accumulator: f32,
+    server_rain_base_rate: f32,
 }
 
 impl GameState {
@@ -150,6 +156,17 @@ impl GameState {
         // Create shaders (instanced version)
         let shader_program = ShaderProgram::new(gl, INSTANCED_VERTEX_SHADER, INSTANCED_FRAGMENT_SHADER)
             .map_err(|e| JsValue::from_str(&e))?;
+
+        // Load textures
+        let cube_texture_data = companion_cube_base_color_texture()
+            .map_err(|e| JsValue::from_str(&e))?;
+        let cube_texture = Texture::from_rgba8(
+            gl,
+            cube_texture_data.width,
+            cube_texture_data.height,
+            &cube_texture_data.pixels,
+        )?;
+        let white_texture = Texture::solid_color(gl, [255, 255, 255, 255])?;
 
         // Create particle mesh (simple cube)
         let particle_mesh = Mesh::cube(0.05);
@@ -295,6 +312,8 @@ impl GameState {
             scene,
             input: Input::new(),
             shader_program,
+            cube_texture,
+            white_texture,
             particle_vbo,
             particle_ibo,
             particle_index_count,
@@ -335,6 +354,8 @@ impl GameState {
             particle_size: 0.14,
             particle_speed: 3.2,
             particle_lifetime: 2.5,
+            server_rain_accumulator: 0.0,
+            server_rain_base_rate: 240.0, // drops per second when raining
         })
     }
 
@@ -344,9 +365,6 @@ impl GameState {
         // Update LOD system
         self.lod_manager.update(&self.camera);
         
-        // Update skybox (day/night cycle)
-        self.skybox.update(dt);
-        
         // Update clouds
         self.clouds.update(dt);
         
@@ -355,7 +373,7 @@ impl GameState {
 
         // Player movement (WASD controls with physics)
         let move_force = 60.0;  // Good movement speed
-        let jump_force = 28.0;  // High jump - can easily jump on boxes!
+        let jump_force = 28.0 * 3.0;  // Triple jump power on demand
         
         // Sprint with SHIFT - 2x speed!
         let is_sprinting = input.keyboard.is_pressed(input::KEY_SHIFT);
@@ -419,9 +437,10 @@ impl GameState {
         
         // LEFT MOUSE CLICK to THROW object
         if input.mouse.is_just_pressed(0) && is_holding && self.multiplayer_enabled {
-            // Throw the object with velocity in the direction we're looking - POWERFUL THROW (x4)
-            let throw_speed = 80.0;  // x4 throw distance
-            let throw_velocity = self.camera.forward * throw_speed + Vec3::new(0.0, 15.0, 0.0); // Higher arc
+            // Throw the object with slower initial speed but bigger arc for same range
+            let throw_speed = 55.0;
+            let throw_arc = 26.0;
+            let throw_velocity = self.camera.forward * throw_speed + Vec3::new(0.0, throw_arc, 0.0);
             let throw_pos = self.camera.position + self.camera.forward * 3.0;
             let _ = self.network.send_drop_object_with_velocity(
                 Vec3::new(throw_pos.x, self.camera.position.y, throw_pos.z),
@@ -567,9 +586,9 @@ impl GameState {
                     // Calculate box speed for impact force - MEGA HIT!
                     let box_speed = (box_vel.x * box_vel.x + box_vel.z * box_vel.z).sqrt();
                     let impact_multiplier = if box_speed > 3.0 { 
-                        20.0 + box_speed * 3.0  // MASSIVE knockback from thrown boxes!
+                        60.0 + box_speed * 8.0  // Enhanced knockback from thrown boxes
                     } else { 
-                        1.0  // Stationary box just blocks
+                        1.5  // Stationary box just blocks
                     };
                     
                     // Inside box - push out along shortest axis
@@ -597,7 +616,14 @@ impl GameState {
                         self.camera.target.x += push;
                         // Add MASSIVE velocity push from thrown box - sends them FLYING!
                         if box_speed > 3.0 {
-                            self.player_rigidbody.apply_impulse(Vec3::new(box_vel.x * 4.0, 15.0, box_vel.z * 4.0));
+                            let horizontal_dir = Vec3::new(box_vel.x, 0.0, box_vel.z).normalize();
+                            let impulse_strength = box_speed * 12.0;
+                            let vertical_boost = 25.0 + box_speed * 0.8;
+                            self.player_rigidbody.apply_impulse(Vec3::new(
+                                horizontal_dir.x * impulse_strength,
+                                vertical_boost,
+                                horizontal_dir.z * impulse_strength,
+                            ));
                         }
                     } else {
                         // Push along Z
@@ -606,7 +632,14 @@ impl GameState {
                         self.camera.target.z += push;
                         // Add MASSIVE velocity push from thrown box - sends them FLYING!
                         if box_speed > 3.0 {
-                            self.player_rigidbody.apply_impulse(Vec3::new(box_vel.x * 4.0, 15.0, box_vel.z * 4.0));
+                            let horizontal_dir = Vec3::new(box_vel.x, 0.0, box_vel.z).normalize();
+                            let impulse_strength = box_speed * 12.0;
+                            let vertical_boost = 25.0 + box_speed * 0.8;
+                            self.player_rigidbody.apply_impulse(Vec3::new(
+                                horizontal_dir.x * impulse_strength,
+                                vertical_boost,
+                                horizontal_dir.z * impulse_strength,
+                            ));
                         }
                     }
                 }
@@ -696,6 +729,15 @@ impl GameState {
         
         // Single-threaded physics for particles
         for &entity in &self.scene.entities.entities.clone() {
+            // Update lifetime and remove expired particles
+            if let Some(lifetime) = self.scene.entities.lifetimes.get_mut(entity) {
+                lifetime.remaining -= dt;
+                if lifetime.remaining <= 0.0 {
+                    entities_to_remove.push(entity);
+                    continue;  // Skip physics for expired particles
+                }
+            }
+            
             if let (Some(transform), Some(velocity)) = (
                 self.scene.entities.transforms.get_mut(entity),
                 self.scene.entities.velocities.get_mut(entity),
@@ -798,7 +840,15 @@ impl GameState {
 
         // Spawn particles continuously based on spawn rate
         if self.spawn_rate > 0 && self.engine.frame_count % 1 == 0 {
+            // Always keep the local fountain alive
             self.spawn_particle_burst(self.spawn_rate);
+            
+            // Multiplayer rain overlay disabled for now
+            // if self.multiplayer_enabled {
+            //     if let Some(cloud) = self.active_rain_cloud() {
+            //         self.spawn_server_rain_particles(self.spawn_rate, &cloud);
+            //     }
+            // }
         }
         
         // Multiplayer: sync state and send updates
@@ -808,6 +858,7 @@ impl GameState {
             
             // Smooth interpolation for all server-synced data (0.15 = smooth but responsive)
             self.network.interpolate(0.15);
+            self.update_server_rain(self.engine.delta_time);
             
             // Send player position to server (every 3 frames = 20 Hz)
             if self.engine.frame_count % 3 == 0 {
@@ -818,11 +869,15 @@ impl GameState {
                 );
             }
             
-            // Sync time of day with server
-            self.skybox.time_of_day = self.network.server_time;
-            
             // Rain is now spawned SERVER-SIDE and synced via server particles
             // All players see the same rain drops falling from the same clouds!
+        }
+
+        // Update skybox time (local cycle or blend to server time)
+        if self.multiplayer_enabled && self.network.connected {
+            self.sync_skybox_time(self.network.server_time, 0.25);
+        } else {
+            self.skybox.update(dt);
         }
 
         // Log FPS and LOD stats
@@ -852,7 +907,8 @@ impl GameState {
         
         // Get sun direction for lighting and shadows
         let sun_dir = self.skybox.get_sun_direction();
-        let _is_night = self.skybox.is_night();  // Kept for future use
+        let is_night = self.skybox.is_night();
+        let cloud_instances = self.collect_cloud_instances(is_night);
         
         // ============================================
         // SHADOW PASS - Render scene from sun's view
@@ -899,6 +955,22 @@ impl GameState {
             if !box_instances.is_empty() {
                 self.instance_buffer.update(gl, &box_instances);
                 gl.draw_elements_instanced_with_i32(GL::TRIANGLES, self.box_index_count, GL::UNSIGNED_SHORT, 0, box_instances.len() as i32);
+            }
+
+            // Render clouds into shadow map so they can occlude sunlight
+            if !cloud_instances.is_empty() {
+                self.cloud_mesh_vbo.bind(gl);
+                gl.vertex_attrib_pointer_with_i32(0, 3, GL::FLOAT, false, stride, 0);
+                self.cloud_mesh_ibo.bind(gl);
+
+                self.instance_buffer.update(gl, &cloud_instances);
+                gl.draw_elements_instanced_with_i32(
+                    GL::TRIANGLES,
+                    self.cloud_mesh_index_count,
+                    GL::UNSIGNED_SHORT,
+                    0,
+                    cloud_instances.len() as i32,
+                );
             }
             
             // Render players to shadow map (including LOCAL player for shadow!)
@@ -975,6 +1047,7 @@ impl GameState {
         let u_light_space_matrix = self.shader_program.get_uniform_location(gl, "u_lightSpaceMatrix");
         let u_shadow_map = self.shader_program.get_uniform_location(gl, "u_shadowMap");
         let u_shadows_enabled = self.shader_program.get_uniform_location(gl, "u_shadowsEnabled");
+        let u_base_color_tex = self.shader_program.get_uniform_location(gl, "u_baseColorTex");
 
         // Set view-projection matrix
         gl.uniform_matrix4fv_with_f32_array(Some(&u_view_proj), false, &view_proj.as_array());
@@ -1009,27 +1082,9 @@ impl GameState {
         }
         
         // Calculate smooth day/night factor (0 = night, 1 = day)
-        // Smooth transition instead of instant flip
+        // New curve shortens orange phase and eases into darkness
         let t = self.skybox.time_of_day;
-        let day_factor = if t < 0.2 {
-            // Early night -> dawn transition
-            let dawn_t = (t - 0.15).max(0.0) / 0.05;
-            dawn_t.clamp(0.0, 1.0)
-        } else if t < 0.25 {
-            // Dawn -> day
-            let morning_t = (t - 0.2) / 0.05;
-            morning_t.clamp(0.0, 1.0)
-        } else if t < 0.75 {
-            // Full day
-            1.0
-        } else if t < 0.8 {
-            // Dusk -> night
-            let dusk_t = 1.0 - (t - 0.75) / 0.05;
-            dusk_t.clamp(0.0, 1.0)
-        } else {
-            // Night
-            0.0
-        };
+        let day_factor = Self::daylight_curve(t);
         
         // Smooth interpolation using smoothstep
         let smooth_factor = day_factor * day_factor * (3.0 - 2.0 * day_factor);
@@ -1049,36 +1104,15 @@ impl GameState {
             gl.uniform1f(Some(loc), ambient);
         }
 
+        // Bind default white texture unless overridden per-object
+        if let Some(ref loc) = u_base_color_tex {
+            gl.uniform1i(Some(loc), 1);
+        }
+        self.white_texture.bind(gl, 1);
+
         // Render clouds first (in background, with transparency)
         gl.enable(GL::BLEND);
         gl.blend_func(GL::SRC_ALPHA, GL::ONE_MINUS_SRC_ALPHA);
-        
-        let is_night = self.skybox.is_night();
-        
-        // Use server-synced clouds if multiplayer, otherwise local clouds
-        let cloud_instances: Vec<InstanceData> = if self.multiplayer_enabled && !self.network.server_clouds.is_empty() {
-            // Server-synced clouds (same positions for all players!)
-            self.network.server_clouds.iter()
-                .map(|cloud| {
-                    let color = if is_night {
-                        Color::new(0.3, 0.3, 0.4, 0.9)
-                    } else {
-                        Color::new(0.95, 0.95, 0.95, 0.9)
-                    };
-                    InstanceData::new(
-                        cloud.position,
-                        Vec3::splat(cloud.scale),
-                        color,
-                    )
-                })
-                .collect()
-        } else {
-            // Fallback to local clouds (solo mode)
-            self.clouds.get_instances(is_night)
-                .iter()
-                .map(|(pos, scale, color)| InstanceData::new(*pos, *scale, *color))
-                .collect()
-        };
         
         // Vertex stride for all meshes (12 floats * 4 bytes = 48)
         let stride = 12 * 4;
@@ -1302,6 +1336,7 @@ impl GameState {
         gl.vertex_attrib_pointer_with_i32(2, 2, GL::FLOAT, false, stride, 24);
         gl.vertex_attrib_pointer_with_i32(3, 4, GL::FLOAT, false, stride, 32);
         self.box_ibo.bind(gl);
+        self.cube_texture.bind(gl, 1);
         
         if self.multiplayer_enabled {
             let my_id = self.network.player_id.clone();
@@ -1314,8 +1349,8 @@ impl GameState {
                         }
                     }
                     
-                    // Orange/brown box color
-                    let color = Color::rgb(0.9, 0.6, 0.2);
+                    // Use neutral tint so baked Companion Cube colors show up
+                    let color = Color::rgb(1.0, 1.0, 1.0);
                     Some(InstanceData::new(
                         obj.position,
                         Vec3::new(2.0, 2.0, 2.0),  // 2x2x2 big box
@@ -1334,7 +1369,7 @@ impl GameState {
                 box_instances.push(InstanceData::new(
                     held_pos,
                     Vec3::new(1.2, 1.2, 1.2),  // Slightly smaller when held
-                    Color::rgb(1.0, 0.7, 0.3),  // Brighter orange when held
+                    Color::rgb(1.2, 1.2, 1.2),  // Mild glow without changing hue
                 ));
             }
             
@@ -1353,7 +1388,7 @@ impl GameState {
             let box_instances = vec![InstanceData::new(
                 Vec3::new(5.0, 1.0, 5.0),
                 Vec3::new(2.0, 2.0, 2.0),
-                Color::rgb(0.9, 0.6, 0.2),
+                Color::rgb(1.0, 1.0, 1.0),
             )];
             self.instance_buffer.update(gl, &box_instances);
             gl.draw_elements_instanced_with_i32(
@@ -1364,6 +1399,9 @@ impl GameState {
                 1,
             );
         }
+
+        // Other geometry relies on vertex colors, so restore white texture.
+        self.white_texture.bind(gl, 1);
 
         if self.use_instancing {
             // INSTANCED RENDERING with LOD - Draw all particles in ONE call!
@@ -1413,33 +1451,38 @@ impl GameState {
                 }
             }
             
-            // Add SERVER particles (rain, etc.) - synced from server
+            // Add SERVER particles (rain, etc.) - synced from server (always render when in frustum)
+            let rain_view_distance = self.ground_size * 2.2;
             for particle in &self.network.server_particles {
-                let particle_radius = 0.1;
                 let pos = particle.position;
-                let lod = self.lod_manager.calculate_lod(&pos, &camera_pos, particle_radius);
+                let dx = pos.x - camera_pos.x;
+                let dz = pos.z - camera_pos.z;
+                let horizontal_dist = (dx * dx + dz * dz).sqrt();
                 
-                if lod.should_render() {
-                    let base_scale = Vec3::splat(self.particle_size);
-                    let final_scale = base_scale * lod.get_mesh_quality();
-                    
-                    // Shrink animation for server particles too
-                    let shrink_duration = 0.5;
-                    let mut scale = final_scale;
-                    let mut alpha = 1.0f32;
-                    if particle.lifetime < shrink_duration {
-                        let shrink_factor = (particle.lifetime / shrink_duration).max(0.0);
-                        let eased = shrink_factor * shrink_factor;
-                        scale = scale * eased;
-                        alpha = shrink_factor;
-                    }
-                    
-                    instances.push(InstanceData::new(
-                        pos,
-                        scale,
-                        Color::new(particle.color.r, particle.color.g, particle.color.b, alpha),
-                    ));
+                // Ignore vertical distance so tall rain sheets aren't culled just because they spawn high above the player
+                if horizontal_dist > rain_view_distance {
+                    continue;
                 }
+                
+                self.lod_manager.stats.total_objects += 1;
+                self.lod_manager.stats.visible_objects += 1;
+                self.lod_manager.stats.low_lod += 1;
+                
+                let mut scale = Vec3::new(0.15, 3.2, 0.15);  // Tall streaks
+                let shrink_duration = 1.0;
+                let mut alpha = 1.0f32;
+                if particle.lifetime < shrink_duration {
+                    let shrink_factor = (particle.lifetime / shrink_duration).clamp(0.0, 1.0);
+                    let eased = shrink_factor * shrink_factor;
+                    scale = Vec3::new(scale.x * eased, scale.y * (0.5 + eased * 0.5), scale.z * eased);
+                    alpha = 0.5 + shrink_factor * 0.5;
+                }
+                
+                instances.push(InstanceData::new(
+                    pos,
+                    scale,
+                    Color::new(particle.color.r, particle.color.g, particle.color.b, alpha),
+                ));
             }
 
             if !instances.is_empty() {
@@ -1494,6 +1537,74 @@ impl GameState {
         Ok(())
     }
 
+    /// Gather cloud instances (local or server-driven) for both shadow and main passes
+    fn collect_cloud_instances(&self, is_night: bool) -> Vec<InstanceData> {
+        if self.multiplayer_enabled && !self.network.server_clouds.is_empty() {
+            self.network.server_clouds.iter()
+                .map(|cloud| {
+                    let color = if is_night {
+                        Color::new(0.3, 0.3, 0.4, 0.9)
+                    } else {
+                        Color::new(0.95, 0.95, 0.95, 0.9)
+                    };
+                    InstanceData::new(cloud.position, Vec3::splat(cloud.scale), color)
+                })
+                .collect()
+        } else {
+            self.clouds.get_instances(is_night)
+                .iter()
+                .map(|(pos, scale, color)| InstanceData::new(*pos, *scale, *color))
+                .collect()
+        }
+    }
+
+    fn sync_skybox_time(&mut self, target_time: f32, rate: f32) {
+        let mut delta = target_time - self.skybox.time_of_day;
+        if delta > 0.5 {
+            delta -= 1.0;
+        } else if delta < -0.5 {
+            delta += 1.0;
+        }
+        self.skybox.time_of_day = (self.skybox.time_of_day + delta * rate).rem_euclid(1.0);
+    }
+
+    /// Day/night curve that shortens orange phase and smooths the fade into darkness
+    fn daylight_curve(time: f32) -> f32 {
+        // Tunable markers for key moments in the cycle
+        const DAWN_START: f32 = 0.17;
+        const DAWN_END: f32 = 0.20;
+        const DUSK_START: f32 = 0.78;
+        const DUSK_END: f32 = 0.80;
+        const NIGHT_FALL_END: f32 = 0.88;
+
+        if time < DAWN_START {
+            0.0
+        } else if time < DAWN_END {
+            Self::smoothstep_range(time, DAWN_START, DAWN_END)
+        } else if time < DUSK_START {
+            1.0
+        } else if time < DUSK_END {
+            // Quick golden hour: drop towards 40% brightness using eased curve
+            let fall = Self::smoothstep_range(time, DUSK_START, DUSK_END);
+            1.0 - fall * 0.6
+        } else if time < NIGHT_FALL_END {
+            // Gradual fade to full night after the orange phase
+            let fade = Self::smoothstep_range(time, DUSK_END, NIGHT_FALL_END);
+            (1.0 - fade) * 0.4
+        } else {
+            0.0
+        }
+    }
+
+    fn smoothstep_range(value: f32, edge0: f32, edge1: f32) -> f32 {
+        if edge1 <= edge0 {
+            return 0.0;
+        }
+        let mut x = ((value - edge0) / (edge1 - edge0)).clamp(0.0, 1.0);
+        x = x * x * (3.0 - 2.0 * x);
+        x
+    }
+
 
     fn spawn_particle_burst(&mut self, count: u32) {
         use std::f32::consts::PI;
@@ -1501,10 +1612,14 @@ impl GameState {
         // Cap at 500 particles per frame MAX for performance
         let capped_count = count.min(500);
         
+        let speed_scale = self.particle_speed.max(0.1);
+        let lifetime_scale = self.particle_lifetime.max(0.5);
+        let vertical_base = 6.5 + speed_scale * 2.1 + lifetime_scale * 0.6;
+        
         for _ in 0..capped_count {
             let angle = js_sys::Math::random() as f32 * PI * 2.0;
-            let speed = (1.0 + js_sys::Math::random() as f32 * 3.0) * self.particle_speed;
-            let height_speed = (2.0 + js_sys::Math::random() as f32 * 4.0) * self.particle_speed;
+            let speed = (1.2 + js_sys::Math::random() as f32 * 4.5) * speed_scale;
+            let height_speed = vertical_base + js_sys::Math::random() as f32 * vertical_base * 1.1;
 
             let velocity = Velocity::new().with_linear(Vec3::new(
                 angle.cos() * speed,
@@ -1514,7 +1629,7 @@ impl GameState {
 
             // Spawn at corner of the ground (like a fountain/spring)
             // Ground is 200x200 (ground_size * 2), so corner is at -ground_size, -ground_size
-            let corner_pos = Vec3::new(-self.ground_size + 10.0, 0.0, -self.ground_size + 10.0);
+            let corner_pos = Vec3::new(-self.ground_size + 10.0, 2.5, -self.ground_size + 10.0);
             let mut transform = Transform::new().with_position(corner_pos);
             transform.scale = Vec3::splat(self.particle_size / 0.05); // Scale based on size
 
@@ -1528,6 +1643,93 @@ impl GameState {
             let lifetime = Lifetime::new(self.particle_lifetime * (0.5 + js_sys::Math::random() as f32 * 0.5));
 
             self.scene.entities.create_particle(transform, velocity, color, lifetime);
+        }
+    }
+    
+    fn update_server_rain(&mut self, dt: f32) {
+        if let Some(cloud) = self.active_rain_cloud() {
+            // Base rain density expressed as drops per second
+            self.server_rain_accumulator += self.server_rain_base_rate * dt;
+            let spawn_now = self.server_rain_accumulator.floor() as u32;
+            if spawn_now > 0 {
+                self.server_rain_accumulator -= spawn_now as f32;
+                self.spawn_server_rain_particles(spawn_now.min(600), &cloud);
+            }
+        } else {
+            self.server_rain_accumulator = 0.0;
+        }
+    }
+    
+    fn active_rain_cloud(&self) -> Option<CloudData> {
+        self.network
+            .server_clouds
+            .iter()
+            .find(|cloud| cloud.is_raining)
+            .cloned()
+    }
+    
+    fn spawn_server_rain_particles(&mut self, count: u32, cloud: &CloudData) {
+        use std::f32::consts::PI;
+        
+        if count == 0 {
+            return;
+        }
+        
+        let capped = count.min(800);
+        let mut spawn_center = cloud.position;
+        let camera_pos = self.camera.position;
+        let max_radius = (cloud.scale * 0.9).max(10.0);
+        
+        // Bias rain spawn center toward the local player so they always stand in the sheet
+        let dx = camera_pos.x - spawn_center.x;
+        let dz = camera_pos.z - spawn_center.z;
+        let horizontal_dist = (dx * dx + dz * dz).sqrt();
+        if horizontal_dist > 1.0 {
+            let target_offset = (max_radius * 0.5).min(horizontal_dist);
+            let ratio = target_offset / horizontal_dist;
+            spawn_center.x += dx * ratio;
+            spawn_center.z += dz * ratio;
+        }
+        
+        for _ in 0..capped {
+            let angle = js_sys::Math::random() as f32 * PI * 2.0;
+            let radius = (js_sys::Math::random() as f32).sqrt() * max_radius;
+            let offset_x = angle.cos() * radius;
+            let offset_z = angle.sin() * radius;
+            let spawn_y = cloud.position.y - 5.0 + (js_sys::Math::random() as f32 * 4.0);
+            
+            let mut position = Vec3::new(
+                spawn_center.x + offset_x,
+                spawn_y,
+                spawn_center.z + offset_z,
+            );
+            
+            // Keep rain over the playable ground
+            position.x = position.x.clamp(-self.ground_size, self.ground_size);
+            position.z = position.z.clamp(-self.ground_size, self.ground_size);
+            
+            let mut transform = Transform::new().with_position(position);
+            let base_size = self.particle_size.max(0.05);
+            let speed_factor = self.particle_speed.max(0.1);
+            let streak_height = base_size * (4.0 + speed_factor * 5.5); // faster rain = taller streaks
+            let streak_width = base_size * (0.14 + speed_factor * 0.08);
+            transform.scale = Vec3::new(streak_width, streak_height, streak_width);
+            
+            let wind_x = (js_sys::Math::random() as f32 - 0.5) * 6.0;
+            let wind_z = (js_sys::Math::random() as f32 - 0.5) * 6.0;
+            let fall_speed = -35.0 * self.particle_speed.max(0.5);
+            let velocity = Velocity::new().with_linear(Vec3::new(wind_x, fall_speed, wind_z));
+            
+            let distance_to_ground = (position.y + 0.5).max(1.0);
+            let lifetime_secs = (distance_to_ground / fall_speed.abs().max(1.0)) * 1.05;
+            let lifetime = Lifetime::new(lifetime_secs.max(0.4));
+            
+            let tint = 0.7 + (js_sys::Math::random() as f32) * 0.3;
+            let color = Color::new(0.4 * tint, 0.5 * tint, 0.9, 0.85);
+            
+            self.scene
+                .entities
+                .create_particle(transform, velocity, color, lifetime);
         }
     }
 }
@@ -1907,11 +2109,18 @@ pub fn start() -> Result<(), JsValue> {
         
         // Connect to multiplayer server
         // For dev: backend runs in same Docker network
-        // For prod: set to your Fly.io backend URL
-        let server_url = "ws://localhost:9001"; // Works for both local dev and Docker!
+        // For prod: auto-point the client to the same hostname we're served from
+        let window = web_sys::window().expect("no window");
+        let location = window.location();
+        let hostname = location.hostname().unwrap_or_else(|_| "localhost".into());
+        let server_url = if hostname == "localhost" || hostname == "127.0.0.1" {
+            "ws://localhost:9001".to_string()
+        } else {
+            format!("wss://{}:9001", hostname)
+        };
         
         if let Ok(mut state) = game_state.try_borrow_mut() {
-            match state.network.connect(server_url) {
+            match state.network.connect(&server_url) {
                 Ok(_) => {
                     state.multiplayer_enabled = true;
                     web_sys::console::log_1(&"🌐 Multiplayer enabled!".into());

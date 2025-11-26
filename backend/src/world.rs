@@ -1,13 +1,25 @@
 // Shared world state - all players see the same particles!
 use std::sync::RwLock;
+use std::time::Duration;
 use uuid::Uuid;
 use crate::protocol::{Vec3, Color, ParticleData, CloudData, PickableObject, WorldSnapshot};
 
 const GRAVITY: Vec3 = Vec3 { x: 0.0, y: -80.0, z: 0.0 };  // Match client gravity for fast falling
-const MAX_PARTICLES: usize = 10_000_000;  // 10 million max
+const MAX_PARTICLES: usize = 200_000;  // keep shared particle buffer under ~20MB RAM
 const CLOUD_COUNT: usize = 20;
 const CLOUD_BOUNDS: f32 = 150.0;  // Bigger cloud area for bigger ground
 const GROUND_SIZE: f32 = 100.0;  // Match client ground size
+const PICKABLE_RESPAWN_LIMIT: f32 = GROUND_SIZE + 40.0;
+
+// Rain tuning
+const ENABLE_RAIN: bool = false;
+const RAIN_DROPS_PER_TICK: usize = 80;      // Per rainy cloud per tick
+const RAIN_SPAWN_INTERVAL: u32 = 1;         // Spawn every tick
+const RAIN_SPAWN_RADIUS_MULT: f32 = 1.8;    // Wider rain spread than cloud
+const MAX_RAIN_PARTICLES: usize = 8_000;    // Allow dense shared rain sheets
+const RAIN_DROP_SPEED: f32 = -70.0;         // Slightly slower fall for visibility
+const RAIN_DROP_LIFETIME: f32 = 4.5;        // Hang around longer for everyone
+const PUSH_OVERRIDE_MS: u64 = 125;
 
 pub struct World {
     /// All active particles (shared between players)
@@ -92,45 +104,21 @@ impl World {
         }
         
         // Initialize pickable objects (multiple boxes spread around)
-        let pickables = vec![
-            Pickable {
-                id: 1,
-                position: Vec3 { x: 5.0, y: 1.0, z: 5.0 },
+        let pickables = (1..=5)
+            .map(|id| Pickable {
+                id,
+                position: Self::pickable_spawn_position(id),
                 velocity: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
                 held_by: None,
-            },
-            Pickable {
-                id: 2,
-                position: Vec3 { x: -15.0, y: 1.0, z: 10.0 },
-                velocity: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
-                held_by: None,
-            },
-            Pickable {
-                id: 3,
-                position: Vec3 { x: 20.0, y: 1.0, z: -10.0 },
-                velocity: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
-                held_by: None,
-            },
-            Pickable {
-                id: 4,
-                position: Vec3 { x: -30.0, y: 1.0, z: -25.0 },
-                velocity: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
-                held_by: None,
-            },
-            Pickable {
-                id: 5,
-                position: Vec3 { x: 40.0, y: 1.0, z: 30.0 },
-                velocity: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
-                held_by: None,
-            },
-        ];
+            })
+            .collect();
         
         Self {
             particles: RwLock::new(Vec::with_capacity(MAX_PARTICLES)),
             clouds: RwLock::new(clouds),
             pickables: RwLock::new(pickables),
             time_of_day: RwLock::new(0.25),  // Start at sunrise
-            day_speed: 0.0001,  // Slow day/night cycle
+            day_speed: 0.00004,  // Much slower day/night cycle
         }
     }
     
@@ -165,24 +153,37 @@ impl World {
             }
             
             // Collect rain spawn positions from rain clouds (only 1 cloud rains at a time)
-            // Only spawn 1 drop every few ticks to prevent accumulation
             static RAIN_TICK: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
             let tick = RAIN_TICK.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             
-            let rain_positions: Vec<Vec3> = if tick % 2 == 0 {  // Spawn every 2nd tick
-                clouds.iter()
+            let rain_positions: Vec<Vec3> = if ENABLE_RAIN && tick % RAIN_SPAWN_INTERVAL == 0 {
+                clouds
+                    .iter()
                     .filter(|cloud| cloud.is_raining)
-                    .filter(|cloud| cloud.position.x.abs() <= GROUND_SIZE + 30.0 && cloud.position.z.abs() <= GROUND_SIZE + 30.0)
+                    .filter(|cloud| {
+                        cloud.position.x.abs() <= GROUND_SIZE + 30.0
+                            && cloud.position.z.abs() <= GROUND_SIZE + 30.0
+                    })
                     .flat_map(|cloud| {
-                        // Spawn 5 rain drops per tick for visible rain
-                        (0..5).map(move |i| {
+                        (0..RAIN_DROPS_PER_TICK).map(move |i| {
                             // Deterministic "random" based on cloud position and tick
-                            let seed_base = (cloud.position.x * 1000.0 + cloud.position.z * 100.0 + i as f32 * 10.0 + tick as f32) as u32;
-                            let r1 = ((seed_base.wrapping_mul(1103515245).wrapping_add(12345)) >> 16) as f32 / 65535.0;
-                            let r2 = ((seed_base.wrapping_mul(1103515245).wrapping_add(54321)) >> 16) as f32 / 65535.0;
+                            let seed_base = (cloud.position.x * 997.0
+                                + cloud.position.z * 131.0
+                                + i as f32 * 17.0
+                                + tick as f32) as u32;
+                            let r1 = ((seed_base
+                                .wrapping_mul(1103515245)
+                                .wrapping_add(12345))
+                                >> 16) as f32
+                                / 65535.0;
+                            let r2 = ((seed_base
+                                .wrapping_mul(1664525)
+                                .wrapping_add(54321))
+                                >> 16) as f32
+                                / 65535.0;
                             
-                            let offset_x = (r1 - 0.5) * cloud.scale * 1.5;
-                            let offset_z = (r2 - 0.5) * cloud.scale * 1.5;
+                            let offset_x = (r1 - 0.5) * cloud.scale * RAIN_SPAWN_RADIUS_MULT;
+                            let offset_z = (r2 - 0.5) * cloud.scale * RAIN_SPAWN_RADIUS_MULT;
                             
                             Vec3 {
                                 x: cloud.position.x + offset_x,
@@ -199,8 +200,10 @@ impl World {
             drop(clouds);  // Release clouds lock
             
             // Spawn rain particles (server-authoritative, all players see same rain)
-            for pos in rain_positions {
-                self.spawn_rain_particle(pos);
+            if ENABLE_RAIN {
+                for pos in rain_positions {
+                    self.spawn_rain_particle(pos);
+                }
             }
         }
         
@@ -289,9 +292,14 @@ impl World {
                     
                     // Fall into void - respawn
                     if obj.position.y < -50.0 {
-                        obj.position = Vec3 { x: 5.0, y: 10.0, z: 5.0 };
+                        obj.position = Self::pickable_spawn_position(obj.id);
                         obj.velocity = Vec3 { x: 0.0, y: 0.0, z: 0.0 };
-                        tracing::info!("📦 Box respawned after falling into void");
+                        obj.held_by = None;
+                        tracing::info!("📦 Box {} respawned after falling into void", obj.id);
+                    }
+
+                    if Self::reset_pickable_if_out_of_bounds(obj) {
+                        tracing::info!("📦 Box {} returned to arena bounds", obj.id);
                     }
                 }
             }
@@ -389,8 +397,8 @@ impl World {
         
         // Limit rain particles to prevent accumulation
         let rain_count = particles.iter().filter(|p| p.owner.is_none()).count();
-        if rain_count >= 2000 {
-            return;  // Max 2000 rain particles at a time
+        if rain_count >= MAX_RAIN_PARTICLES {
+            return;  // Max rain particles at a time
         }
         
         // Check capacity
@@ -400,9 +408,9 @@ impl World {
         
         particles.push(Particle {
             position,
-            velocity: Vec3 { x: 0.0, y: -80.0, z: 0.0 },  // Very fast falling rain
-            color: Color { r: 0.5, g: 0.5, b: 0.9, a: 0.8 },  // Blue-ish rain
-            lifetime: 2.5,  // Shorter lifetime - rain falls fast and disappears
+            velocity: Vec3 { x: 0.0, y: RAIN_DROP_SPEED, z: 0.0 },  // Slightly slower for visibility
+            color: Color { r: 0.5, g: 0.5, b: 0.9, a: 0.9 },  // Blue-ish rain
+            lifetime: RAIN_DROP_LIFETIME,
             age: 0.0,
             owner: None,  // Rain has no owner
         });
@@ -515,6 +523,10 @@ impl World {
             tracing::info!("📦 Player {} dropped object {} at ({}, {}, {}) with velocity ({}, {}, {})", 
                 player_id, obj.id, position.x, position.y, position.z,
                 velocity.x, velocity.y, velocity.z);
+
+            if Self::reset_pickable_if_out_of_bounds(obj) {
+                tracing::info!("📦 Box {} auto-reset after leaving arena bounds", obj.id);
+            }
         }
     }
     
@@ -600,7 +612,111 @@ impl World {
             if let Some(mut player) = players.get_mut(&player_id) {
                 player.position.x += push_x;
                 player.position.z += push_z;
+                player.velocity.x += push_x * 4.0;
+                player.velocity.z += push_z * 4.0;
+                player.server_override_until = std::time::Instant::now() + Duration::from_millis(PUSH_OVERRIDE_MS);
             }
+        }
+    }
+
+    /// Apply BIG knockback when fast-moving boxes slam into players
+    pub fn push_players_from_moving_boxes(&self, players: &dashmap::DashMap<Uuid, crate::player::Player>) {
+        let box_half = 1.0;
+        let player_radius = 1.5;
+        let speed_threshold = 2.0;
+
+        // Collect fast-moving, unheld boxes
+        let moving_boxes: Vec<(Vec3, Vec3)> = {
+            let pickables = self.pickables.read().unwrap();
+            pickables.iter()
+                .filter(|obj| obj.held_by.is_none())
+                .filter_map(|obj| {
+                    let horizontal_speed = (obj.velocity.x * obj.velocity.x + obj.velocity.z * obj.velocity.z).sqrt();
+                    if horizontal_speed > speed_threshold {
+                        Some((obj.position, obj.velocity))
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        };
+
+        if moving_boxes.is_empty() {
+            return;
+        }
+
+        let mut pushes: Vec<(Uuid, Vec3, Vec3)> = Vec::new();
+
+        for (box_pos, box_vel) in moving_boxes {
+            let horiz_vel = Vec3 { x: box_vel.x, y: 0.0, z: box_vel.z };
+            let speed = (horiz_vel.x * horiz_vel.x + horiz_vel.z * horiz_vel.z).sqrt().max(0.1);
+            let push_dir = horiz_vel / speed;
+
+            for entry in players.iter() {
+                let player_id = *entry.key();
+                let player_pos = entry.value().position;
+
+                // Vertical overlap (player height ~5)
+                let player_bottom = player_pos.y - 5.0;
+                let player_top = player_pos.y;
+                let box_bottom = box_pos.y - box_half;
+                let box_top = box_pos.y + box_half;
+                let vertical_overlap = player_bottom < box_top && player_top > box_bottom;
+                if !vertical_overlap {
+                    continue;
+                }
+
+                let dx = player_pos.x - box_pos.x;
+                let dz = player_pos.z - box_pos.z;
+                let dist = (dx * dx + dz * dz).sqrt();
+                let push_dist = box_half + player_radius;
+
+                if dist < push_dist {
+                    let overlap = (push_dist - dist).max(0.1);
+                    let impulse_strength = overlap * 18.0 + speed * 6.0; // MUCH harder knockback
+                    let impulse = Vec3 {
+                        x: push_dir.x * impulse_strength,
+                        y: 6.0 + speed * 0.3, // slight pop upwards
+                        z: push_dir.z * impulse_strength,
+                    };
+                    pushes.push((player_id, impulse, push_dir));
+                }
+            }
+        }
+
+        for (player_id, impulse, dir) in pushes {
+            if let Some(mut player) = players.get_mut(&player_id) {
+                player.position.x += dir.x * impulse.x * 0.2;
+                player.position.z += dir.z * impulse.z * 0.2;
+                player.velocity.x += impulse.x;
+                player.velocity.y = player.velocity.y.max(impulse.y);
+                player.velocity.z += impulse.z;
+                player.server_override_until = std::time::Instant::now() + Duration::from_millis(PUSH_OVERRIDE_MS);
+            }
+        }
+    }
+}
+
+impl World {
+    fn pickable_spawn_position(id: u32) -> Vec3 {
+        match id {
+            1 => Vec3 { x: 5.0, y: 1.0, z: 5.0 },
+            2 => Vec3 { x: -15.0, y: 1.0, z: 10.0 },
+            3 => Vec3 { x: 20.0, y: 1.0, z: -10.0 },
+            4 => Vec3 { x: -30.0, y: 1.0, z: -25.0 },
+            5 => Vec3 { x: 40.0, y: 1.0, z: 30.0 },
+            _ => Vec3 { x: 0.0, y: 1.0, z: 0.0 },
+        }
+    }
+
+    fn reset_pickable_if_out_of_bounds(obj: &mut Pickable) -> bool {
+        if obj.position.x.abs() > PICKABLE_RESPAWN_LIMIT || obj.position.z.abs() > PICKABLE_RESPAWN_LIMIT {
+            obj.position = Self::pickable_spawn_position(obj.id);
+            obj.velocity = Vec3 { x: 0.0, y: 0.0, z: 0.0 };
+            obj.held_by = None;
+            true
+        } else {
+            false
         }
     }
 }

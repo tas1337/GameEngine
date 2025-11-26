@@ -35,7 +35,8 @@ void main() {
     v_normal = normalize(normalMatrix * a_normal);
     
     v_uv = a_uv;
-    v_color = a_instanceColor;
+    // Combine baked vertex color (textures/gradients) with per-instance tint
+    v_color = a_color * a_instanceColor;
     v_position = worldPos.xyz;
 }
 "#;
@@ -56,6 +57,7 @@ uniform vec3 u_sunColor;
 uniform float u_ambientStrength;
 uniform sampler2D u_shadowMap;
 uniform bool u_shadowsEnabled;
+uniform sampler2D u_baseColorTex;
 
 // Calculate shadow with PCF (Percentage Closer Filtering) for soft shadows
 float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
@@ -75,14 +77,11 @@ float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
     // Current depth from light's perspective
     float currentDepth = projCoords.z;
     
-    // Larger bias for ground (horizontal surfaces) to avoid shadow acne
-    float normalDotLight = dot(normal, lightDir);
-    float bias = max(0.01 * (1.0 - normalDotLight), 0.003);
-    
-    // Extra bias for nearly horizontal surfaces (like ground)
-    if (abs(normal.y) > 0.9) {
-        bias = 0.005;  // Fixed bias for ground
-    }
+    // Adaptive bias so the ground can still show contact shadows
+    float normalDotLight = max(dot(normal, lightDir), 0.0);
+    float bias = max(0.0025 * (1.0 - normalDotLight), 0.0004);
+    float flatReceiver = smoothstep(0.75, 0.95, abs(normal.y));
+    bias *= mix(1.0, 0.25, flatReceiver);
     
     // PCF - sample surrounding texels for soft shadows
     float shadow = 0.0;
@@ -96,9 +95,9 @@ float calculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir) {
             shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
         }
     }
-    shadow /= 25.0; // Average of 25 samples for softer shadows
+    shadow = shadow / 25.0; // Average of 25 samples for softer shadows
     
-    return shadow;
+    return clamp(shadow, 0.0, 1.0);
 }
 
 void main() {
@@ -116,15 +115,21 @@ void main() {
     // Ambient light (darker at night)
     vec3 ambient = u_ambientStrength * vec3(1.0);
     
-    // Combine lighting with shadow
-    // Shadow only affects direct sunlight, not ambient
-    // shadow * 0.85 = 85% darker in shadow for visible effect
-    vec3 lighting = ambient + (1.0 - shadow * 0.85) * diffuse * u_sunColor;
+    // Apply stronger shadow influence (also dims ambient slightly)
+    float shadow_strength = clamp(shadow, 0.0, 1.0);
+    float flatReceiver = smoothstep(0.75, 0.95, abs(normal.y));
+    float receiver_shadow = clamp(mix(shadow_strength, shadow_strength * 1.35, flatReceiver), 0.0, 1.0);
+    vec3 shaded_ambient = ambient * (1.0 - receiver_shadow * 0.65);
+    vec3 direct = (1.0 - receiver_shadow) * diffuse * u_sunColor;
+    vec3 lighting = shaded_ambient + direct;
+
+    // Sample base color texture and modulate with vertex/instance color
+    vec4 albedo = texture(u_baseColorTex, v_uv) * v_color;
     
     // Apply to object color
-    vec3 finalColor = v_color.rgb * lighting;
+    vec3 finalColor = albedo.rgb * lighting;
     
-    fragColor = vec4(finalColor, v_color.a);
+    fragColor = vec4(finalColor, albedo.a);
 }
 "#;
 

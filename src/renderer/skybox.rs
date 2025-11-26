@@ -26,31 +26,31 @@ impl Skybox {
             Vertex::new([-size, -size,  size], [0.0, -1.0, 0.0], [0.0, 1.0], [0.1, 0.1, 0.2, 1.0]),
             
             // Top (bright)
-            Vertex::new([-size,  size, -size], [0.0, 1.0, 0.0], [0.0, 0.0], [0.5, 0.7, 1.0, 1.0]),
-            Vertex::new([ size,  size, -size], [0.0, 1.0, 0.0], [1.0, 0.0], [0.5, 0.7, 1.0, 1.0]),
-            Vertex::new([ size,  size,  size], [0.0, 1.0, 0.0], [1.0, 1.0], [0.5, 0.7, 1.0, 1.0]),
-            Vertex::new([-size,  size,  size], [0.0, 1.0, 0.0], [0.0, 1.0], [0.5, 0.7, 1.0, 1.0]),
+            Vertex::new([-size,  size, -size], [0.0, 1.0, 0.0], [0.0, 0.0], [0.65, 0.82, 1.05, 1.0]),
+            Vertex::new([ size,  size, -size], [0.0, 1.0, 0.0], [1.0, 0.0], [0.65, 0.82, 1.05, 1.0]),
+            Vertex::new([ size,  size,  size], [0.0, 1.0, 0.0], [1.0, 1.0], [0.65, 0.82, 1.05, 1.0]),
+            Vertex::new([-size,  size,  size], [0.0, 1.0, 0.0], [0.0, 1.0], [0.65, 0.82, 1.05, 1.0]),
             
             // Sides (gradient from bottom to top)
             Vertex::new([-size, -size, -size], [-1.0, 0.0, 0.0], [0.0, 0.0], [0.2, 0.3, 0.4, 1.0]),
             Vertex::new([-size, -size,  size], [-1.0, 0.0, 0.0], [1.0, 0.0], [0.2, 0.3, 0.4, 1.0]),
-            Vertex::new([-size,  size,  size], [-1.0, 0.0, 0.0], [1.0, 1.0], [0.4, 0.6, 0.9, 1.0]),
-            Vertex::new([-size,  size, -size], [-1.0, 0.0, 0.0], [0.0, 1.0], [0.4, 0.6, 0.9, 1.0]),
+            Vertex::new([-size,  size,  size], [-1.0, 0.0, 0.0], [1.0, 1.0], [0.55, 0.75, 1.0, 1.0]),
+            Vertex::new([-size,  size, -size], [-1.0, 0.0, 0.0], [0.0, 1.0], [0.55, 0.75, 1.0, 1.0]),
             
             Vertex::new([ size, -size,  size], [1.0, 0.0, 0.0], [0.0, 0.0], [0.2, 0.3, 0.4, 1.0]),
             Vertex::new([ size, -size, -size], [1.0, 0.0, 0.0], [1.0, 0.0], [0.2, 0.3, 0.4, 1.0]),
-            Vertex::new([ size,  size, -size], [1.0, 0.0, 0.0], [1.0, 1.0], [0.4, 0.6, 0.9, 1.0]),
-            Vertex::new([ size,  size,  size], [1.0, 0.0, 0.0], [0.0, 1.0], [0.4, 0.6, 0.9, 1.0]),
+            Vertex::new([ size,  size, -size], [1.0, 0.0, 0.0], [1.0, 1.0], [0.55, 0.75, 1.0, 1.0]),
+            Vertex::new([ size,  size,  size], [1.0, 0.0, 0.0], [0.0, 1.0], [0.55, 0.75, 1.0, 1.0]),
             
             Vertex::new([-size, -size, -size], [0.0, 0.0, -1.0], [0.0, 0.0], [0.2, 0.3, 0.4, 1.0]),
             Vertex::new([ size, -size, -size], [0.0, 0.0, -1.0], [1.0, 0.0], [0.2, 0.3, 0.4, 1.0]),
-            Vertex::new([ size,  size, -size], [0.0, 0.0, -1.0], [1.0, 1.0], [0.4, 0.6, 0.9, 1.0]),
-            Vertex::new([-size,  size, -size], [0.0, 0.0, -1.0], [0.0, 1.0], [0.4, 0.6, 0.9, 1.0]),
+            Vertex::new([ size,  size, -size], [0.0, 0.0, -1.0], [1.0, 1.0], [0.55, 0.75, 1.0, 1.0]),
+            Vertex::new([-size,  size, -size], [0.0, 0.0, -1.0], [0.0, 1.0], [0.55, 0.75, 1.0, 1.0]),
             
             Vertex::new([ size, -size,  size], [0.0, 0.0, 1.0], [0.0, 0.0], [0.2, 0.3, 0.4, 1.0]),
             Vertex::new([-size, -size,  size], [0.0, 0.0, 1.0], [1.0, 0.0], [0.2, 0.3, 0.4, 1.0]),
-            Vertex::new([-size,  size,  size], [0.0, 0.0, 1.0], [1.0, 1.0], [0.4, 0.6, 0.9, 1.0]),
-            Vertex::new([ size,  size,  size], [0.0, 0.0, 1.0], [0.0, 1.0], [0.4, 0.6, 0.9, 1.0]),
+            Vertex::new([-size,  size,  size], [0.0, 0.0, 1.0], [1.0, 1.0], [0.55, 0.75, 1.0, 1.0]),
+            Vertex::new([ size,  size,  size], [0.0, 0.0, 1.0], [0.0, 1.0], [0.55, 0.75, 1.0, 1.0]),
         ];
 
         let vertex_data = super::vertex_data_interleaved(&vertices);
@@ -63,7 +63,7 @@ impl Skybox {
             vbo,
             index_count,
             time_of_day: 0.25, // Start at dawn
-            cycle_speed: 0.05,  // 0.05 = ~20 second full cycle
+            cycle_speed: 0.015,  // Slower cycle (~70 seconds locally)
         })
     }
 
@@ -75,40 +75,31 @@ impl Skybox {
     }
 
     pub fn get_sky_color(&self) -> Vec3 {
-        // Smooth day/night cycle using cosine interpolation
-        // time: 0.0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset, 1.0 = midnight
         let t = self.time_of_day;
         
-        // Calculate sun height using smooth cosine curve (-1 at midnight, 1 at noon)
-        let sun_height = (t * std::f32::consts::PI * 2.0).cos() * -1.0;
+        let night_color = Vec3::new(0.03, 0.05, 0.15);
+        let dawn_color = Vec3::new(0.92, 0.63, 0.42);
+        let day_color = Vec3::new(0.85, 0.97, 1.3);
+        let dusk_color = Vec3::new(0.96, 0.55, 0.4);
         
-        // Smooth transition factor (0 = night, 1 = day)
-        // Use smoothstep for even smoother transitions
-        let day_factor = Self::smoothstep(-0.3, 0.3, sun_height);
+        let dawn_weight = Self::smooth_time_weight(t, 0.18, 0.38);
+        let mut day_weight = Self::smooth_time_weight(t, 0.3, 0.9);
+        day_weight = day_weight.powf(0.8);  // Keep midday bright but less contrast
+        let dusk_weight = Self::smooth_time_weight(t, 0.8, 1.05);
+        let mut night_weight = 1.0 - (dawn_weight + day_weight + dusk_weight);
+        if night_weight < 0.0 {
+            night_weight = 0.0;
+        }
         
-        // Define key colors
-        let night_color = Vec3::new(0.02, 0.02, 0.08);     // Deep dark blue
-        let dawn_dusk_color = Vec3::new(0.9, 0.4, 0.2);    // Orange/pink
-        let day_color = Vec3::new(0.4, 0.7, 1.0);          // Bright blue sky
+        let total = night_weight + dawn_weight + day_weight + dusk_weight;
+        let safe_total = total.max(0.0001);
         
-        // Calculate how close we are to dawn/dusk (peaks at sunrise/sunset)
-        let dawn_dusk_factor = {
-            // Sun near horizon = dawn/dusk
-            let horizon_proximity = 1.0 - sun_height.abs();
-            // Only show orange in narrow window near actual dawn/dusk times
-            let time_factor = if (t > 0.20 && t < 0.30) || (t > 0.70 && t < 0.80) {
-                Self::smoothstep(0.0, 0.7, horizon_proximity)
-            } else {
-                0.0
-            };
-            time_factor * 0.5  // Max 50% orange blend (less intense)
-        };
+        let mut color = night_color * night_weight;
+        color += dawn_color * dawn_weight;
+        color += day_color * day_weight;
+        color += dusk_color * dusk_weight;
         
-        // Blend between night and day
-        let base_color = Self::lerp_vec3(&night_color, &day_color, day_factor);
-        
-        // Add dawn/dusk orange tint
-        Self::lerp_vec3(&base_color, &dawn_dusk_color, dawn_dusk_factor)
+        color / safe_total
     }
     
     /// Smooth interpolation (like GLSL smoothstep)
@@ -124,6 +115,27 @@ impl Skybox {
             a.y + (b.y - a.y) * t,
             a.z + (b.z - a.z) * t,
         )
+    }
+
+    fn smooth_time_weight(time: f32, start: f32, end: f32) -> f32 {
+        let mut s = start;
+        let mut e = end;
+        let mut t = time;
+        
+        if e < s {
+            e += 1.0;
+            if t < s {
+                t += 1.0;
+            }
+        }
+        
+        if t < s || t > e {
+            return 0.0;
+        }
+        
+        let normalized = (t - s) / (e - s);
+        let peak = 1.0 - (normalized * 2.0 - 1.0).abs(); // Triangle wave 0..1..0
+        peak * peak  // Ease at the top
     }
 
     pub fn is_night(&self) -> bool {

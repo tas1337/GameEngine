@@ -11,6 +11,7 @@ pub mod skybox;
 pub mod clouds;
 pub mod lod;
 pub mod shadows;
+pub mod texture;
 
 pub use webgl_context::*;
 pub use webgl_buffer::*;
@@ -23,4 +24,5 @@ pub use skybox::*;
 pub use clouds::*;
 pub use lod::*;
 pub use shadows::*;
+pub use texture::*;
 
