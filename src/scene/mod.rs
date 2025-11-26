@@ -1,7 +1,7 @@
 // Scene management - built from scratch!
 
 use crate::ecs::*;
-use crate::renderer::*;
+// use crate::renderer::*;  // Not currently used
 use crate::core::Engine;
 
 pub struct Scene {

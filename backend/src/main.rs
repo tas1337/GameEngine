@@ -117,33 +117,57 @@ async fn handle_connection(stream: TcpStream, addr: SocketAddr, state: ServerSta
             loop {
                 interval.tick().await;
                 
-                use crate::protocol::RemotePlayer;
+                use crate::protocol::{RemotePlayer, LeaderboardEntry};
+                
+                // Build player list with scores
+                let players: Vec<RemotePlayer> = state.players.iter()
+                    .map(|entry| {
+                        let player = entry.value();
+                        RemotePlayer {
+                            id: entry.key().to_string(),
+                            position: crate::protocol::Vec3 {
+                                x: player.position.x,
+                                y: player.position.y,
+                                z: player.position.z,
+                            },
+                            rotation: crate::protocol::Vec3 {
+                                x: player.rotation.x,
+                                y: player.rotation.y,
+                                z: player.rotation.z,
+                            },
+                            velocity: crate::protocol::Vec3 {
+                                x: player.velocity.x,
+                                y: player.velocity.y,
+                                z: player.velocity.z,
+                            },
+                            score: player.score,
+                        }
+                    })
+                    .collect();
+                
+                // Build leaderboard (sorted by score descending)
+                let mut sorted_players: Vec<(String, u32)> = state.players.iter()
+                    .map(|entry| (entry.key().to_string(), entry.value().score))
+                    .collect();
+                sorted_players.sort_by(|a, b| b.1.cmp(&a.1));
+                
+                let leaderboard: Vec<LeaderboardEntry> = sorted_players.iter()
+                    .enumerate()
+                    .take(5)
+                    .map(|(i, (id, score))| LeaderboardEntry {
+                        id: id.clone(),
+                        score: *score,
+                        rank: (i + 1) as u32,
+                    })
+                    .collect();
+                
                 let world_update = ServerMessage::WorldUpdate {
-                    players: state.players.iter()
-                        .map(|entry| {
-                            let player = entry.value();
-                            RemotePlayer {
-                                id: entry.key().to_string(),
-                                position: crate::protocol::Vec3 {
-                                    x: player.position.x,
-                                    y: player.position.y,
-                                    z: player.position.z,
-                                },
-                                rotation: crate::protocol::Vec3 {
-                                    x: player.rotation.x,
-                                    y: player.rotation.y,
-                                    z: player.rotation.z,
-                                },
-                                velocity: crate::protocol::Vec3 {
-                                    x: player.velocity.x,
-                                    y: player.velocity.y,
-                                    z: player.velocity.z,
-                                },
-                            }
-                        })
-                        .collect(),
+                    players,
                     particles: state.world.get_active_particles(),
+                    clouds: state.world.get_clouds(),
+                    pickables: state.world.get_pickables(),
                     sun_time: *state.world.time_of_day.read().unwrap(),
+                    leaderboard,
                 };
                 
                 if let Ok(data) = bincode::serialize(&world_update) {
@@ -204,10 +228,34 @@ async fn handle_client_message(msg: ClientMessage, player_id: Uuid, state: &Serv
                 player.velocity = velocity;
                 player.last_update = std::time::Instant::now();
             }
+            // Update held object position (pass rotation so box is in front of player)
+            state.world.update_held_object(player_id, position, rotation);
         }
         ClientMessage::SpawnParticles { positions, velocities, colors } => {
             // Spawn particles in shared world
             state.world.spawn_particles(player_id, positions, velocities, colors);
+        }
+        ClientMessage::PickupObject { object_id } => {
+            state.world.pickup_object(object_id, player_id);
+        }
+        ClientMessage::DropObject { position, velocity } => {
+            state.world.drop_object(player_id, position, velocity);
+        }
+        ClientMessage::ReportKill { victim_id: _ } => {
+            // Player knocked someone off - give them a point!
+            if let Some(mut player) = state.players.get_mut(&player_id) {
+                player.score += 1;
+                tracing::info!("🏆 Player {} scored! (now: {})", player_id, player.score);
+            }
+        }
+        ClientMessage::ReportDeath => {
+            // Player fell off - reset their score to 0
+            if let Some(mut player) = state.players.get_mut(&player_id) {
+                if player.score > 0 {
+                    tracing::info!("💀 Player {} fell off! Score reset from {} to 0", player_id, player.score);
+                }
+                player.score = 0;
+            }
         }
         ClientMessage::Ping => {
             // Respond with pong (for latency measurement)
@@ -228,6 +276,9 @@ async fn world_update_loop(state: ServerState) {
         // Update physics
         state.world.update(1.0 / state.tick_rate as f32);
         
+        // Push players away from held boxes (prevents clipping)
+        state.world.push_players_from_held_boxes(&state.players);
+        
         // Update spatial hash
         state.spatial_hash.update(&state.players, &state.world);
         
@@ -238,41 +289,65 @@ async fn world_update_loop(state: ServerState) {
 
 /// Broadcast updates to all players (only send nearby entities)
 async fn broadcast_updates(state: &ServerState) {
-    use crate::protocol::RemotePlayer;
+    use crate::protocol::{RemotePlayer, LeaderboardEntry};
+    
+    // Build player list with scores
+    let players: Vec<RemotePlayer> = state.players.iter()
+        .map(|entry| {
+            let player = entry.value();
+            RemotePlayer {
+                id: entry.key().to_string(),
+                position: crate::protocol::Vec3 {
+                    x: player.position.x,
+                    y: player.position.y,
+                    z: player.position.z,
+                },
+                rotation: crate::protocol::Vec3 {
+                    x: player.rotation.x,
+                    y: player.rotation.y,
+                    z: player.rotation.z,
+                },
+                velocity: crate::protocol::Vec3 {
+                    x: player.velocity.x,
+                    y: player.velocity.y,
+                    z: player.velocity.z,
+                },
+                score: player.score,
+            }
+        })
+        .collect();
+    
+    // Build leaderboard (sorted by score descending)
+    let mut sorted_players: Vec<(String, u32)> = state.players.iter()
+        .map(|entry| (entry.key().to_string(), entry.value().score))
+        .collect();
+    sorted_players.sort_by(|a, b| b.1.cmp(&a.1));
+    
+    // Create leaderboard entries with ranks
+    let leaderboard: Vec<LeaderboardEntry> = sorted_players.iter()
+        .enumerate()
+        .take(5)  // Top 5
+        .map(|(i, (id, score))| LeaderboardEntry {
+            id: id.clone(),
+            score: *score,
+            rank: (i + 1) as u32,
+        })
+        .collect();
     
     let world_update = ServerMessage::WorldUpdate {
-        players: state.players.iter()
-            .map(|entry| {
-                let player = entry.value();
-                RemotePlayer {
-                    id: entry.key().to_string(),
-                    position: crate::protocol::Vec3 {
-                        x: player.position.x,
-                        y: player.position.y,
-                        z: player.position.z,
-                    },
-                    rotation: crate::protocol::Vec3 {
-                        x: player.rotation.x,
-                        y: player.rotation.y,
-                        z: player.rotation.z,
-                    },
-                    velocity: crate::protocol::Vec3 {
-                        x: player.velocity.x,
-                        y: player.velocity.y,
-                        z: player.velocity.z,
-                    },
-                }
-            })
-            .collect(),
+        players,
         particles: state.world.get_active_particles(),
+        clouds: state.world.get_clouds(),
+        pickables: state.world.get_pickables(),
         sun_time: *state.world.time_of_day.read().unwrap(),
+        leaderboard,
     };
     
     if let Ok(data) = bincode::serialize(&world_update) {
-        // Compress for network efficiency
-        let compressed = lz4::block::compress(&data, None, true).unwrap_or(data);
+        // Compress for network efficiency (compression ready for future use)
+        let _compressed = lz4::block::compress(&data, None, true).unwrap_or(data);
         
-        // Send to all players
+        // Log broadcast (actual sending happens in per-player tasks)
         for entry in state.players.iter() {
             tracing::trace!("Broadcasting to player: {}", entry.key());
         }

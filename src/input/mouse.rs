@@ -37,6 +37,13 @@ impl Mouse {
         self.delta = new_pos - self.position;
         self.position = new_pos;
     }
+    
+    /// Update with raw movement delta (for pointer lock mode)
+    /// Accumulates delta across multiple events per frame
+    pub fn update_delta(&mut self, dx: f32, dy: f32) {
+        self.delta.x += dx;
+        self.delta.y += dy;
+    }
 
     pub fn press_left(&mut self) {
         if !self.left_button {
@@ -64,6 +71,15 @@ impl Mouse {
 
     pub fn update_wheel(&mut self, delta: f32) {
         self.wheel_delta = delta;
+    }
+    
+    /// Check if button was just pressed (0=left, 1=middle, 2=right)
+    pub fn is_just_pressed(&self, button: u8) -> bool {
+        match button {
+            0 => self.left_just_pressed,
+            2 => self.right_just_pressed,
+            _ => false,
+        }
     }
 
     /// Call at end of frame

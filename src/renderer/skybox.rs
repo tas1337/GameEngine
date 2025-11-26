@@ -1,6 +1,6 @@
 // Skybox system - built from scratch!
 
-use crate::math::{Vec3, Mat4};
+use crate::math::Vec3;
 use crate::renderer::{Vertex, GLBuffer};
 use web_sys::WebGl2RenderingContext as GL;
 use wasm_bindgen::prelude::*;
@@ -75,42 +75,55 @@ impl Skybox {
     }
 
     pub fn get_sky_color(&self) -> Vec3 {
-        // Day/night cycle colors
+        // Smooth day/night cycle using cosine interpolation
+        // time: 0.0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset, 1.0 = midnight
         let t = self.time_of_day;
         
-        if t < 0.25 {
-            // Night to dawn (dark blue to orange)
-            let factor = t * 4.0;
-            Vec3::new(
-                0.1 + factor * 0.9,
-                0.1 + factor * 0.4,
-                0.2 + factor * 0.3,
-            )
-        } else if t < 0.5 {
-            // Dawn to noon (orange to bright blue)
-            let factor = (t - 0.25) * 4.0;
-            Vec3::new(
-                1.0 - factor * 0.5,
-                0.5 + factor * 0.3,
-                0.5 + factor * 0.5,
-            )
-        } else if t < 0.75 {
-            // Noon to dusk (bright blue to orange)
-            let factor = (t - 0.5) * 4.0;
-            Vec3::new(
-                0.5 + factor * 0.5,
-                0.8 - factor * 0.3,
-                1.0 - factor * 0.5,
-            )
-        } else {
-            // Dusk to night (orange to dark blue)
-            let factor = (t - 0.75) * 4.0;
-            Vec3::new(
-                1.0 - factor * 0.9,
-                0.5 - factor * 0.4,
-                0.5 - factor * 0.3,
-            )
-        }
+        // Calculate sun height using smooth cosine curve (-1 at midnight, 1 at noon)
+        let sun_height = (t * std::f32::consts::PI * 2.0).cos() * -1.0;
+        
+        // Smooth transition factor (0 = night, 1 = day)
+        // Use smoothstep for even smoother transitions
+        let day_factor = Self::smoothstep(-0.3, 0.3, sun_height);
+        
+        // Define key colors
+        let night_color = Vec3::new(0.02, 0.02, 0.08);     // Deep dark blue
+        let dawn_dusk_color = Vec3::new(0.9, 0.4, 0.2);    // Orange/pink
+        let day_color = Vec3::new(0.4, 0.7, 1.0);          // Bright blue sky
+        
+        // Calculate how close we are to dawn/dusk (peaks at sunrise/sunset)
+        let dawn_dusk_factor = {
+            // Sun near horizon = dawn/dusk
+            let horizon_proximity = 1.0 - sun_height.abs();
+            // Only show orange in narrow window near actual dawn/dusk times
+            let time_factor = if (t > 0.20 && t < 0.30) || (t > 0.70 && t < 0.80) {
+                Self::smoothstep(0.0, 0.7, horizon_proximity)
+            } else {
+                0.0
+            };
+            time_factor * 0.5  // Max 50% orange blend (less intense)
+        };
+        
+        // Blend between night and day
+        let base_color = Self::lerp_vec3(&night_color, &day_color, day_factor);
+        
+        // Add dawn/dusk orange tint
+        Self::lerp_vec3(&base_color, &dawn_dusk_color, dawn_dusk_factor)
+    }
+    
+    /// Smooth interpolation (like GLSL smoothstep)
+    fn smoothstep(edge0: f32, edge1: f32, x: f32) -> f32 {
+        let t = ((x - edge0) / (edge1 - edge0)).clamp(0.0, 1.0);
+        t * t * (3.0 - 2.0 * t)
+    }
+    
+    /// Linear interpolation between two Vec3
+    fn lerp_vec3(a: &Vec3, b: &Vec3, t: f32) -> Vec3 {
+        Vec3::new(
+            a.x + (b.x - a.x) * t,
+            a.y + (b.y - a.y) * t,
+            a.z + (b.z - a.z) * t,
+        )
     }
 
     pub fn is_night(&self) -> bool {

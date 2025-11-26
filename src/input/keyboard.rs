@@ -54,6 +54,7 @@ pub const KEY_W: &str = "KeyW";
 pub const KEY_A: &str = "KeyA";
 pub const KEY_S: &str = "KeyS";
 pub const KEY_D: &str = "KeyD";
+pub const KEY_E: &str = "KeyE";
 pub const KEY_SPACE: &str = "Space";
 pub const KEY_SHIFT: &str = "ShiftLeft";
 pub const KEY_CTRL: &str = "ControlLeft";

@@ -19,6 +19,23 @@ pub struct Color {
     pub a: f32,
 }
 
+/// Cloud data (server-synced)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CloudData {
+    pub position: Vec3,
+    pub scale: f32,
+    pub is_raining: bool,  // Dark rain cloud - clients spawn rain locally
+}
+
+/// Pickable object data (server-synced)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PickableObject {
+    pub id: u32,
+    pub position: Vec3,
+    pub velocity: Vec3,  // Box velocity for collision push
+    pub held_by: Option<String>,  // Player ID holding it, None if on ground
+}
+
 /// Messages from client to server
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ClientMessage {
@@ -36,6 +53,25 @@ pub enum ClientMessage {
         colors: Vec<Color>,
     },
     
+    /// Pick up or drop an object
+    PickupObject {
+        object_id: u32,
+    },
+    
+    /// Drop the currently held object
+    DropObject {
+        position: Vec3,
+        velocity: Vec3,
+    },
+    
+    /// Report a kill (knocked someone off)
+    ReportKill {
+        victim_id: String,
+    },
+    
+    /// Report own death (fell off)
+    ReportDeath,
+    
     /// Ping (latency check)
     Ping,
 }
@@ -47,6 +83,15 @@ pub struct RemotePlayer {
     pub position: Vec3,
     pub rotation: Vec3,
     pub velocity: Vec3,
+    pub score: u32,  // King of the hill score
+}
+
+/// Leaderboard entry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LeaderboardEntry {
+    pub id: String,
+    pub score: u32,
+    pub rank: u32,
 }
 
 /// Messages from server to client
@@ -62,7 +107,10 @@ pub enum ServerMessage {
     WorldUpdate {
         players: Vec<RemotePlayer>,
         particles: Vec<ParticleData>,
+        clouds: Vec<CloudData>,
+        pickables: Vec<PickableObject>,
         sun_time: f32,
+        leaderboard: Vec<LeaderboardEntry>,  // Top 5 + current player if not in top 5
     },
     
     /// Pong response

@@ -10,6 +10,7 @@ pub mod instanced_shader;
 pub mod skybox;
 pub mod clouds;
 pub mod lod;
+pub mod shadows;
 
 pub use webgl_context::*;
 pub use webgl_buffer::*;
@@ -21,4 +22,5 @@ pub use instanced_shader::*;
 pub use skybox::*;
 pub use clouds::*;
 pub use lod::*;
+pub use shadows::*;
 

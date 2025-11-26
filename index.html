@@ -4,7 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Rust 3D Game Engine - From Scratch!</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Condensed:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --hl-orange: #FF9900;
+            --hl-orange-dim: #CC7700;
+            --hl-orange-glow: rgba(255, 153, 0, 0.3);
+            --hl-bg: rgba(20, 20, 20, 0.92);
+            --hl-bg-solid: #141414;
+            --hl-border: #3a3a3a;
+            --hl-text: #e0e0e0;
+            --hl-text-dim: #888;
+            --hl-accent: #FF9900;
+            --hl-success: #4CAF50;
+            --hl-danger: #d32f2f;
+            --hl-gold: #FFD700;
+            --hl-silver: #A0A0A0;
+            --hl-bronze: #CD7F32;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -16,8 +36,8 @@
             padding: 0;
             overflow: hidden;
             background-color: #0a0a0a;
-            font-family: 'Courier New', monospace;
-            color: #00ff00;
+            font-family: 'Roboto', 'Segoe UI', Tahoma, sans-serif;
+            color: var(--hl-text);
             width: 100vw;
             height: 100vh;
         }
@@ -38,54 +58,172 @@
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            font-size: 24px;
+            font-size: 20px;
+            font-weight: 300;
+            letter-spacing: 2px;
+            color: var(--hl-orange);
             z-index: 1000;
         }
 
+        /* Play button overlay - HL style */
+        #play-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(20,15,10,0.95) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        #play-overlay h1 {
+            font-family: 'Roboto Condensed', 'Roboto', sans-serif;
+            font-size: 52px;
+            font-weight: 700;
+            color: var(--hl-orange);
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            margin-bottom: 16px;
+            text-shadow: 0 2px 20px var(--hl-orange-glow);
+        }
+
+        #play-overlay .controls-info {
+            color: var(--hl-text-dim);
+            margin-bottom: 40px;
+            text-align: center;
+            line-height: 2;
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 1px;
+        }
+
+        #play-overlay .controls-info strong {
+            color: var(--hl-text);
+            font-weight: 500;
+            background: rgba(255,153,0,0.15);
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+
+        #play-btn {
+            font-family: 'Roboto Condensed', 'Roboto', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 3px;
+            padding: 16px 64px;
+            background: var(--hl-orange);
+            color: #000;
+            border: none;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.15s ease;
+        }
+
+        #play-btn:hover {
+            background: #FFB833;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--hl-orange-glow);
+        }
+
+        #play-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Pickup prompt - flat HL style */
+        #pickup-prompt {
+            position: fixed;
+            bottom: 30%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--hl-bg);
+            padding: 12px 24px;
+            border-left: 3px solid var(--hl-orange);
+            font-size: 15px;
+            color: var(--hl-text);
+            z-index: 500;
+            display: none;
+        }
+
+        #pickup-prompt kbd {
+            background: var(--hl-orange);
+            color: #000;
+            padding: 2px 8px;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 700;
+            font-size: 13px;
+            margin: 0 4px;
+        }
+
+        /* Held item display */
+        #held-item {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--hl-bg);
+            padding: 10px 20px;
+            border-left: 3px solid var(--hl-orange);
+            font-size: 13px;
+            color: var(--hl-text);
+            z-index: 500;
+            display: none;
+        }
+
+        #held-item kbd {
+            background: var(--hl-orange);
+            color: #000;
+            padding: 2px 6px;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 700;
+            font-size: 11px;
+            margin: 0 3px;
+        }
+
+        /* Info panel - flat industrial */
         #info {
             position: fixed;
             top: 10px;
             left: 10px;
-            background: rgba(0, 0, 0, 0.9);
-            padding: 12px;
-            border: 2px solid #00ff00;
+            background: var(--hl-bg);
+            padding: 14px 16px;
+            border-left: 3px solid var(--hl-orange);
             font-size: 12px;
             z-index: 100;
-            min-width: 220px;
+            min-width: 200px;
             max-width: calc(50vw - 20px);
-            font-family: 'Courier New', monospace;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
             max-height: 90vh;
             overflow-y: auto;
         }
 
+        /* Controls panel */
         #controls {
             position: fixed;
-            top: 10px;
+            bottom: 10px;
             right: 10px;
-            background: rgba(0, 0, 0, 0.9);
-            padding: 12px;
-            border: 2px solid #00ff00;
+            background: var(--hl-bg);
+            padding: 14px 16px;
+            border-left: 3px solid var(--hl-orange);
             font-size: 12px;
             z-index: 100;
-            min-width: 220px;
+            min-width: 200px;
             max-width: calc(50vw - 20px);
-            font-family: 'Courier New', monospace;
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
         }
 
         @media (max-width: 768px) {
             #info {
                 font-size: 10px;
-                padding: 8px;
+                padding: 10px 12px;
                 min-width: auto;
                 max-width: calc(100vw - 20px);
             }
             
             #controls {
                 font-size: 10px;
-                padding: 8px;
-                top: auto;
+                padding: 10px 12px;
                 bottom: 10px;
                 min-width: auto;
                 max-width: calc(100vw - 20px);
@@ -96,7 +234,7 @@
             }
             
             #controls button {
-                padding: 6px !important;
+                padding: 8px !important;
                 font-size: 10px;
             }
             
@@ -110,71 +248,306 @@
         }
 
         #info h2 {
-            margin: 0 0 10px 0;
-            font-size: 14px;
-            color: #00ff00;
-            text-shadow: 0 0 10px #00ff00;
+            margin: 0 0 12px 0;
+            font-family: 'Roboto Condensed', 'Roboto', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--hl-orange);
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
         #info p {
-            margin: 2px 0;
-            line-height: 1.4;
+            margin: 4px 0;
+            line-height: 1.5;
+            color: var(--hl-text-dim);
         }
 
         #stats strong {
-            color: #0ff;
+            color: var(--hl-text);
+            font-weight: 500;
         }
 
         hr {
             border: none;
-            border-top: 1px solid #00ff00;
-            opacity: 0.3;
-            margin: 8px 0;
+            border-top: 1px solid var(--hl-border);
+            margin: 10px 0;
+        }
+
+        #controls h2 {
+            margin: 0 0 12px 0;
+            font-family: 'Roboto Condensed', 'Roboto', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--hl-orange);
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
         #controls label {
             display: block;
-            margin: 6px 0 2px 0;
-            color: #0f0;
+            margin: 8px 0 3px 0;
+            color: var(--hl-text-dim);
             font-size: 11px;
+            font-weight: 400;
         }
 
         #controls input[type="range"] {
             width: 100%;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
+            accent-color: var(--hl-orange);
+            height: 4px;
         }
 
         #controls button {
-            font-family: 'Courier New', monospace;
+            font-family: 'Roboto', sans-serif;
             font-size: 11px;
-            font-weight: bold;
+            font-weight: 700;
             text-transform: uppercase;
+            letter-spacing: 1px;
             width: 100%;
-            padding: 8px;
-            background: #f00;
+            padding: 10px;
+            background: var(--hl-danger);
             color: #fff;
             border: none;
             cursor: pointer;
-            margin-top: 8px;
+            margin-top: 10px;
+            transition: background 0.15s ease;
         }
 
         #controls button:hover {
-            background: #ff3333 !important;
+            background: #e53935 !important;
+        }
+
+        #controls button.pause-btn {
+            background: var(--hl-orange);
+            color: #000;
+        }
+
+        #controls button.pause-btn:hover {
+            background: #FFB833 !important;
         }
 
         .hidden {
+            display: none !important;
+        }
+
+        /* Crosshair - simple HL style */
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 24px;
+            height: 24px;
+            z-index: 400;
+            pointer-events: none;
             display: none;
         }
+
+        #crosshair::before,
+        #crosshair::after {
+            content: '';
+            position: absolute;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        #crosshair::before {
+            width: 2px;
+            height: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        #crosshair::after {
+            height: 2px;
+            width: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* Player rank labels */
+        #player-labels {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 300;
+        }
+
+        .player-rank-label {
+            position: absolute;
+            font-family: 'Roboto Condensed', 'Roboto', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            transform: translate(-50%, -100%);
+            white-space: nowrap;
+            pointer-events: none;
+            padding: 4px 10px;
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .player-rank-label.rank-1 { color: var(--hl-gold); font-size: 26px; background: rgba(255,215,0,0.15); }
+        .player-rank-label.rank-2 { color: var(--hl-silver); font-size: 23px; background: rgba(160,160,160,0.1); }
+        .player-rank-label.rank-3 { color: var(--hl-bronze); font-size: 21px; background: rgba(205,127,50,0.1); }
+        .player-rank-label.is-me { color: var(--hl-orange); border-left: 3px solid var(--hl-orange); }
+
+        /* Leaderboard panel - flat HL */
+        #leaderboard {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: var(--hl-bg);
+            border-left: 3px solid var(--hl-gold);
+            padding: 16px;
+            font-size: 14px;
+            color: var(--hl-text);
+            z-index: 500;
+            min-width: 260px;
+        }
+
+        #leaderboard h3 {
+            margin: 0 0 14px 0;
+            font-family: 'Roboto Condensed', 'Roboto', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: left;
+            color: var(--hl-gold);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #leaderboard-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .leaderboard-entry {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 10px;
+            background: rgba(255, 255, 255, 0.03);
+            font-size: 13px;
+            border-left: 2px solid transparent;
+        }
+
+        .leaderboard-entry.rank-1 { color: var(--hl-gold); background: rgba(255, 215, 0, 0.08); border-left-color: var(--hl-gold); font-size: 15px; }
+        .leaderboard-entry.rank-2 { color: var(--hl-silver); background: rgba(160, 160, 160, 0.05); border-left-color: var(--hl-silver); font-size: 14px; }
+        .leaderboard-entry.rank-3 { color: var(--hl-bronze); background: rgba(205, 127, 50, 0.05); border-left-color: var(--hl-bronze); }
+        .leaderboard-entry.is-me { background: rgba(255, 153, 0, 0.15); border-left-color: var(--hl-orange); }
+
+        .leaderboard-rank { font-weight: 700; margin-right: 12px; min-width: 32px; }
+        .leaderboard-id { flex: 1; overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
+        .leaderboard-score { font-weight: 700; margin-left: 12px; min-width: 30px; text-align: right; }
+
+        #my-rank {
+            font-size: 13px;
+            color: var(--hl-orange);
+            padding: 10px;
+            background: rgba(255, 153, 0, 0.1);
+            text-align: center;
+            font-weight: 500;
+        }
+
+        /* Status indicators */
+        .status-panel {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 153, 0, 0.08);
+            border-left: 2px solid var(--hl-success);
+        }
+
+        .status-panel p {
+            margin: 3px 0 !important;
+            font-size: 10px;
+            color: var(--hl-success) !important;
+            font-weight: 500;
+        }
+
+        /* Collapsible panels */
+        .collapsible .collapse-header {
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .collapsible .collapse-header:hover {
+            opacity: 0.8;
+        }
+        
+        .collapsible.collapsed > *:not(.collapse-header) {
+            display: none !important;
+        }
+        
+        .collapsible.collapsed {
+            padding: 10px 14px !important;
+        }
     </style>
+    
+    <script>
+        // Toggle collapse for panels
+        function toggleCollapse(element) {
+            element.classList.toggle('collapsed');
+            const header = element.querySelector('.collapse-header');
+            if (element.classList.contains('collapsed')) {
+                header.textContent = header.textContent.replace('▼', '►');
+            } else {
+                header.textContent = header.textContent.replace('►', '▼');
+            }
+        }
+    </script>
 </head>
 <body>
     <div id="loading">
-        🚀 Loading Game Engine...<br>
-        <small>Building from scratch with Rust + WebGL</small>
+        LOADING ENGINE<br>
+        <small style="color: var(--hl-text-dim); font-size: 12px;">Rust + WebGL</small>
     </div>
 
-    <div id="info">
-        <h2>📊 Stats</h2>
+    <!-- Play overlay -->
+    <div id="play-overlay" class="hidden">
+        <h1>GAME ENGINE</h1>
+        <div class="controls-info">
+            <strong>WASD</strong> Move &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>SPACE</strong> Jump &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>E</strong> Pick up / Drop<br>
+            <strong>LEFT CLICK</strong> Throw &nbsp;&nbsp;|&nbsp;&nbsp;
+            <strong>ESC</strong> Pause
+        </div>
+        <button id="play-btn">PLAY</button>
+    </div>
+
+    <!-- Crosshair -->
+    <div id="crosshair"></div>
+
+    <!-- Pickup prompt -->
+    <div id="pickup-prompt">
+        Press <kbd>E</kbd> to pick up
+    </div>
+
+    <!-- Held item indicator -->
+    <div id="held-item">
+        Holding Item — <kbd>E</kbd> drop | <kbd>LMB</kbd> throw
+    </div>
+
+    <!-- Container for player rank labels (positioned in 3D space) -->
+    <div id="player-labels"></div>
+
+    <!-- Leaderboard UI -->
+    <div id="leaderboard" class="collapsible">
+        <h3 class="collapse-header" onclick="toggleCollapse(this.parentElement)">LEADERBOARD ▼</h3>
+        <div id="leaderboard-list"></div>
+        <div id="my-rank" style="margin-top: 10px; border-top: 1px solid var(--hl-border); padding-top: 10px;"></div>
+    </div>
+
+    <div id="info" class="collapsible">
+        <h2 class="collapse-header" onclick="toggleCollapse(this.parentElement)">STATS ▼</h2>
         <div id="stats">
             <p><strong id="fps-counter">FPS: --</strong></p>
             <p id="frame-time">Frame: --ms</p>
@@ -183,40 +556,46 @@
             <p id="culled-count">Culled: --</p>
             <p id="draw-calls">Draw Calls: --</p>
             <p id="memory-usage">Memory: --MB</p>
-            <p id="player-count" style="color: #0ff; margin-top: 8px;">👥 Players: 1 (solo)</p>
+            <p id="player-count" style="color: var(--hl-orange); margin-top: 8px;">Players: 1 (solo)</p>
         </div>
     </div>
 
-    <div id="controls">
-        <h2>🎛️ Controls</h2>
-        <label>Spawn: <span id="spawn-rate-val">50</span>/f</label>
-        <input type="range" id="spawn-rate" min="0" max="2000" value="50" step="10">
+    <div id="controls" class="collapsible">
+        <h2 class="collapse-header" onclick="toggleCollapse(this.parentElement)">PARTICLES ▼</h2>
+        <label>Spawn Rate: <span id="spawn-rate-val">50</span>/f</label>
+        <input type="range" id="spawn-rate" min="0" max="100" value="50" step="5">
         
-        <label>Size: <span id="size-val">0.05</span></label>
-        <input type="range" id="particle-size" min="0.01" max="0.2" value="0.05" step="0.01">
+        <label>Size: <span id="size-val">0.14</span></label>
+        <input type="range" id="particle-size" min="0.01" max="0.3" value="0.14" step="0.01">
         
-        <label>Speed: <span id="speed-val">2.0</span>x</label>
-        <input type="range" id="particle-speed" min="0.1" max="10" value="2.0" step="0.1">
+        <label>Speed: <span id="speed-val">3.2</span>x</label>
+        <input type="range" id="particle-speed" min="0.1" max="10" value="3.2" step="0.1">
         
-        <label>Life: <span id="lifetime-val">3.0</span>s</label>
-        <input type="range" id="particle-lifetime" min="0.5" max="10" value="3.0" step="0.5">
+        <label>Lifetime: <span id="lifetime-val">2.5</span>s</label>
+        <input type="range" id="particle-lifetime" min="0.5" max="10" value="2.5" step="0.5">
         
-        <div style="margin-top: 8px; padding: 8px; background: rgba(0, 255, 0, 0.1); border: 1px solid #0f0; border-radius: 4px;">
-            <p style="margin: 0; font-size: 10px; color: #0ff;">✓ GPU Instancing: ACTIVE</p>
-            <p style="margin: 2px 0 0 0; font-size: 10px; color: #0ff;">✓ Multi-Core: ACTIVE</p>
+        <div class="status-panel">
+            <p>GPU INSTANCING: ACTIVE</p>
+            <p>MULTI-CORE: ACTIVE</p>
+            <p>SHADOWS: ON</p>
         </div>
         
+        <button id="pause-btn" class="pause-btn">PAUSE</button>
         <button id="clear-particles">CLEAR ALL</button>
     </div>
 
     <script type="module">
-        import init, { set_spawn_rate, set_particle_size, set_particle_speed, set_particle_lifetime, set_instancing, set_workers, clear_all_particles, update_viewport } from './pkg/game_engine.js';
+        import init, { set_spawn_rate, set_particle_size, set_particle_speed, set_particle_lifetime, set_instancing, set_workers, set_shadows, set_pointer_locked, clear_all_particles, update_viewport, get_player_labels, get_leaderboard } from './pkg/game_engine.js';
+
+        let isPlaying = false;
+        let canvas = null;
 
         async function run() {
             try {
                 await init();
                 document.getElementById('loading').classList.add('hidden');
-                console.log('✅ Engine loaded!');
+                document.getElementById('play-overlay').classList.remove('hidden');
+                console.log('[Engine] Loaded successfully');
                 
                 // Force GPU instancing and multi-core ON
                 set_instancing(true);
@@ -227,30 +606,197 @@
                 window.addEventListener('orientationchange', () => setTimeout(handleResize, 100));
                 
                 setupControls();
+                setupPlayButton();
+                setupPointerLock();
+                
+                // Start UI update loop for player labels and leaderboard
+                startUIUpdateLoop();
             } catch (error) {
                 document.getElementById('loading').innerHTML = 
-                    `❌ Error:<br><small>${error}</small>`;
-                console.error('Failed:', error);
+                    `ERROR<br><small style="color: var(--hl-danger);">${error}</small>`;
+                console.error('[Engine] Failed:', error);
             }
+        }
+        
+        // Update player rank labels above heads and leaderboard
+        function startUIUpdateLoop() {
+            const labelsContainer = document.getElementById('player-labels');
+            const leaderboardList = document.getElementById('leaderboard-list');
+            const myRankDiv = document.getElementById('my-rank');
+            
+            function updateUI() {
+                if (!isPlaying) {
+                    requestAnimationFrame(updateUI);
+                    return;
+                }
+                
+                // Update player labels (ranks above heads)
+                try {
+                    const labelsJson = get_player_labels();
+                    const labels = JSON.parse(labelsJson);
+                    
+                    // Clear old labels
+                    labelsContainer.innerHTML = '';
+                    
+                    // Create new labels
+                    for (const label of labels) {
+                        const el = document.createElement('div');
+                        el.className = 'player-rank-label';
+                        if (label.rank === 1) el.classList.add('rank-1');
+                        else if (label.rank === 2) el.classList.add('rank-2');
+                        else if (label.rank === 3) el.classList.add('rank-3');
+                        if (label.isMe) el.classList.add('is-me');
+                        
+                        el.textContent = `#${label.rank}`;
+                        el.style.left = `${label.x}px`;
+                        el.style.top = `${label.y}px`;
+                        labelsContainer.appendChild(el);
+                    }
+                } catch (e) {
+                    // Ignore parse errors
+                }
+                
+                // Update leaderboard
+                try {
+                    const lbJson = get_leaderboard();
+                    const data = JSON.parse(lbJson);
+                    
+                    // Build leaderboard HTML
+                    let html = '';
+                    for (const entry of data.leaderboard) {
+                        let classes = 'leaderboard-entry';
+                        if (entry.rank === 1) classes += ' rank-1';
+                        else if (entry.rank === 2) classes += ' rank-2';
+                        else if (entry.rank === 3) classes += ' rank-3';
+                        if (entry.isMe) classes += ' is-me';
+                        
+                        html += `<div class="${classes}">
+                            <span class="leaderboard-rank">#${entry.rank}</span>
+                            <span class="leaderboard-id">${entry.id}</span>
+                            <span class="leaderboard-score">${entry.score}</span>
+                        </div>`;
+                    }
+                    leaderboardList.innerHTML = html;
+                    
+                    // Show my rank if not in top 5
+                    if (data.myRank > 5 && data.myRank > 0) {
+                        myRankDiv.innerHTML = `You: #${data.myRank} (${data.myScore} pts)`;
+                        myRankDiv.style.display = 'block';
+                    } else if (data.myRank > 0) {
+                        myRankDiv.innerHTML = `Your Score: ${data.myScore} pts`;
+                        myRankDiv.style.display = 'block';
+                    } else {
+                        myRankDiv.style.display = 'none';
+                    }
+                } catch (e) {
+                    // Ignore parse errors
+                }
+                
+                requestAnimationFrame(updateUI);
+            }
+            
+            requestAnimationFrame(updateUI);
+        }
+
+        function setupPlayButton() {
+            const playBtn = document.getElementById('play-btn');
+            const overlay = document.getElementById('play-overlay');
+            
+            playBtn.addEventListener('click', () => {
+                startGame();
+            });
+        }
+
+        function startGame() {
+            const overlay = document.getElementById('play-overlay');
+            const crosshair = document.getElementById('crosshair');
+            
+            overlay.classList.add('hidden');
+            crosshair.style.display = 'block';
+            isPlaying = true;
+            
+            // Request pointer lock
+            canvas = document.querySelector('canvas');
+            if (canvas) {
+                canvas.requestPointerLock();
+            }
+            
+            document.getElementById('pause-btn').textContent = 'PAUSE';
+        }
+
+        function pauseGame() {
+            const overlay = document.getElementById('play-overlay');
+            const crosshair = document.getElementById('crosshair');
+            
+            overlay.classList.remove('hidden');
+            crosshair.style.display = 'none';
+            isPlaying = false;
+            
+            // Exit pointer lock
+            document.exitPointerLock();
+            
+            document.getElementById('pause-btn').textContent = 'RESUME';
+        }
+
+        function setupPointerLock() {
+            document.addEventListener('pointerlockchange', () => {
+                if (document.pointerLockElement) {
+                    console.log('[Input] Pointer locked');
+                    document.getElementById('crosshair').style.display = 'block';
+                    set_pointer_locked(true);  // Tell Rust pointer is locked
+                } else {
+                    console.log('[Input] Pointer unlocked');
+                    document.getElementById('crosshair').style.display = 'none';
+                    set_pointer_locked(false);  // Tell Rust pointer is unlocked
+                }
+            });
+
+            // Prevent right-click context menu during gameplay
+            document.addEventListener('contextmenu', (e) => {
+                if (isPlaying) {
+                    e.preventDefault();
+                }
+            });
+
+            // Click canvas to re-lock when playing (after ESC was pressed and game resumed)
+            document.addEventListener('click', (e) => {
+                if (isPlaying && !document.pointerLockElement && e.target.tagName === 'CANVAS') {
+                    canvas.requestPointerLock();
+                }
+            });
+
+            // Escape key = pause game
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (isPlaying) {
+                        e.preventDefault();
+                        pauseGame();
+                    }
+                }
+            });
         }
 
         function handleResize() {
-            const canvas = document.querySelector('canvas');
+            canvas = document.querySelector('canvas');
             if (!canvas) {
-                console.warn('Canvas not found yet');
+                setTimeout(handleResize, 100);
                 return;
             }
             
-            const width = window.innerWidth;
-            const height = window.innerHeight;
+            const displayWidth = window.innerWidth;
+            const displayHeight = window.innerHeight;
+            const dpr = 1;
             
-            canvas.width = width;
-            canvas.height = height;
+            const bufferWidth = Math.round(displayWidth * dpr);
+            const bufferHeight = Math.round(displayHeight * dpr);
             
-            const isMobile = width < 768;
-            update_viewport(width, height, isMobile);
+            canvas.width = bufferWidth;
+            canvas.height = bufferHeight;
+            canvas.style.width = displayWidth + 'px';
+            canvas.style.height = displayHeight + 'px';
             
-            console.log(`📐 ${width}x${height} ${isMobile ? '📱' : '💻'}`);
+            const isMobile = displayWidth < 768;
+            update_viewport(bufferWidth, bufferHeight, isMobile);
         }
 
         function setupControls() {
@@ -281,10 +827,26 @@
             document.getElementById('clear-particles').addEventListener('click', () => {
                 clear_all_particles();
             });
+
+            document.getElementById('pause-btn').addEventListener('click', () => {
+                if (isPlaying) {
+                    pauseGame();
+                } else {
+                    startGame();
+                }
+            });
         }
+
+        // Expose functions for Rust to call for UI updates
+        window.showPickupPrompt = function(show) {
+            document.getElementById('pickup-prompt').style.display = show ? 'block' : 'none';
+        };
+
+        window.showHeldItem = function(show) {
+            document.getElementById('held-item').style.display = show ? 'block' : 'none';
+        };
 
         run();
     </script>
 </body>
 </html>
-

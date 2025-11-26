@@ -37,19 +37,21 @@ impl SunMesh {
             }
         }
 
-        // Generate indices
+        // Generate indices (CCW winding for front faces visible from outside)
         for i in 0..segments {
             for j in 0..segments {
                 let first = (i * (segments + 1) + j) as u16;
                 let second = first + (segments + 1) as u16;
 
+                // Triangle 1 - CCW winding
                 indices.push(first);
-                indices.push(second);
                 indices.push(first + 1);
+                indices.push(second);
 
-                indices.push(second);
-                indices.push(second + 1);
+                // Triangle 2 - CCW winding
                 indices.push(first + 1);
+                indices.push(second + 1);
+                indices.push(second);
             }
         }
 

@@ -1,6 +1,5 @@
 // Web Workers - Multi-threaded physics from scratch!
 
-use wasm_bindgen::prelude::*;
 use crate::math::Vec3;
 use crate::physics::GRAVITY;
 

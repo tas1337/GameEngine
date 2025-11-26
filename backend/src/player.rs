@@ -11,6 +11,7 @@ pub struct Player {
     pub position: Vec3,
     pub rotation: Vec3,
     pub velocity: Vec3,
+    pub score: u32,  // King of the hill score
     
     #[serde(skip, default = "default_instant")]
     pub last_update: Instant,
@@ -34,6 +35,7 @@ impl Player {
             position: Vec3 { x: 0.0, y: 2.0, z: 5.0 },  // Default spawn
             rotation: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
             velocity: Vec3 { x: 0.0, y: 0.0, z: 0.0 },
+            score: 0,  // Start with 0 points
             last_update: Instant::now(),
             addr,
         }

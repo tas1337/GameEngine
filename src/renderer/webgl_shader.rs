@@ -1,6 +1,5 @@
 // WebGL Shader system - GLSL shaders from scratch!
 
-use wasm_bindgen::prelude::*;
 use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader};
 
 pub struct ShaderProgram {

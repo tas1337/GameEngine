@@ -172,6 +172,17 @@ impl Mat4 {
             self.data[0][3] * v.x + self.data[1][3] * v.y + self.data[2][3] * v.z + self.data[3][3] * v.w,
         )
     }
+    
+    /// Transform a 3D point (with w=1) and return clip space coordinates
+    #[inline]
+    pub fn transform_vec4(&self, x: f32, y: f32, z: f32, w: f32) -> (f32, f32, f32, f32) {
+        (
+            self.data[0][0] * x + self.data[1][0] * y + self.data[2][0] * z + self.data[3][0] * w,
+            self.data[0][1] * x + self.data[1][1] * y + self.data[2][1] * z + self.data[3][1] * w,
+            self.data[0][2] * x + self.data[1][2] * y + self.data[2][2] * z + self.data[3][2] * w,
+            self.data[0][3] * x + self.data[1][3] * y + self.data[2][3] * z + self.data[3][3] * w,
+        )
+    }
 
     /// Get as flat array for GPU upload
     #[inline]

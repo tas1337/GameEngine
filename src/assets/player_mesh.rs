@@ -82,48 +82,55 @@ impl PlayerMesh {
             }
         }
         
-        // Generate indices for top hemisphere
+        // Generate indices for top hemisphere (CCW winding for front faces)
         for ring in 0..rings {
             for seg in 0..segments {
                 let current = ring * (segments + 1) + seg;
                 let next = current + segments + 1;
                 
+                // Triangle 1 - CCW winding (visible from outside)
                 indices.push(current as u16);
                 indices.push(next as u16);
                 indices.push((current + 1) as u16);
                 
+                // Triangle 2 - CCW winding (visible from outside)
                 indices.push((current + 1) as u16);
                 indices.push(next as u16);
                 indices.push((next + 1) as u16);
             }
         }
         
-        // Generate indices for cylinder
+        // Generate indices for cylinder (current=top row, next=bottom row)
         for seg in 0..segments {
             let current = cylinder_start + seg as u16;
             let next = current + (segments + 1) as u16;
             
+            // Triangle 1 - CCW from outside: top-left -> top-right -> bottom-left
             indices.push(current);
-            indices.push(next);
             indices.push(current + 1);
+            indices.push(next);
             
+            // Triangle 2 - CCW from outside: top-right -> bottom-right -> bottom-left
             indices.push(current + 1);
-            indices.push(next);
             indices.push(next + 1);
+            indices.push(next);
         }
         
-        // Generate indices for bottom hemisphere
+        // Generate indices for bottom hemisphere (builds from equator DOWN to pole)
+        // Winding must account for downward-facing triangles
         for ring in 0..rings {
             for seg in 0..segments {
                 let current = bottom_start + (ring * (segments + 1) + seg) as u16;
                 let next = current + (segments + 1) as u16;
                 
-                indices.push(current as u16);
+                // Triangle 1 - Flip winding for bottom hemisphere
                 indices.push(next as u16);
+                indices.push(current as u16);
                 indices.push((current + 1) as u16);
                 
-                indices.push((current + 1) as u16);
+                // Triangle 2
                 indices.push(next as u16);
+                indices.push((current + 1) as u16);
                 indices.push((next + 1) as u16);
             }
         }

@@ -4,7 +4,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use std::cell::RefCell;
 use std::rc::Rc;
-use web_sys::Performance;
+// use web_sys::Performance;  // Not currently used
 
 /// Engine state and main loop
 pub struct Engine {
