@@ -1,0 +1,44 @@
+# Fly.io config - ONE app with BOTH frontend + backend!
+# CHEAPEST deployment option!
+
+app = "game-engine"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  SERVER_ADDR = "0.0.0.0:9001"
+  RUST_LOG = "info"
+
+# HTTP service (frontend on port 80)
+[[services]]
+  internal_port = 80
+  protocol = "tcp"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+    force_https = true
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+# WebSocket service (backend on port 9001)
+[[services]]
+  internal_port = 9001
+  protocol = "tcp"
+
+  [[services.ports]]
+    port = 9001
+
+# FREE TIER! Single shared CPU
+[vm]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
+# Keep it running on single instance (cheapest)
+[scaling]
+  min_machines = 1
+  max_machines = 1
+

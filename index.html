@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Rust 3D Game Engine - From Scratch!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #0a0a0a;
+            font-family: 'Courier New', monospace;
+            color: #00ff00;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            font-size: 24px;
+            z-index: 1000;
+        }
+
+        #info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 12px;
+            border: 2px solid #00ff00;
+            font-size: 12px;
+            z-index: 100;
+            min-width: 220px;
+            max-width: calc(50vw - 20px);
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        #controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 12px;
+            border: 2px solid #00ff00;
+            font-size: 12px;
+            z-index: 100;
+            min-width: 220px;
+            max-width: calc(50vw - 20px);
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+        }
+
+        @media (max-width: 768px) {
+            #info {
+                font-size: 10px;
+                padding: 8px;
+                min-width: auto;
+                max-width: calc(100vw - 20px);
+            }
+            
+            #controls {
+                font-size: 10px;
+                padding: 8px;
+                top: auto;
+                bottom: 10px;
+                min-width: auto;
+                max-width: calc(100vw - 20px);
+            }
+            
+            #controls input[type="range"] {
+                width: 100px;
+            }
+            
+            #controls button {
+                padding: 6px !important;
+                font-size: 10px;
+            }
+            
+            #info h2, #controls h2 {
+                font-size: 12px !important;
+            }
+            
+            #info p, #controls label {
+                font-size: 9px;
+            }
+        }
+
+        #info h2 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #00ff00;
+            text-shadow: 0 0 10px #00ff00;
+        }
+
+        #info p {
+            margin: 2px 0;
+            line-height: 1.4;
+        }
+
+        #stats strong {
+            color: #0ff;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #00ff00;
+            opacity: 0.3;
+            margin: 8px 0;
+        }
+
+        #controls label {
+            display: block;
+            margin: 6px 0 2px 0;
+            color: #0f0;
+            font-size: 11px;
+        }
+
+        #controls input[type="range"] {
+            width: 100%;
+            margin-bottom: 6px;
+        }
+
+        #controls button {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            width: 100%;
+            padding: 8px;
+            background: #f00;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+
+        #controls button:hover {
+            background: #ff3333 !important;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        🚀 Loading Game Engine...<br>
+        <small>Building from scratch with Rust + WebGL</small>
+    </div>
+
+    <div id="info">
+        <h2>📊 Stats</h2>
+        <div id="stats">
+            <p><strong id="fps-counter">FPS: --</strong></p>
+            <p id="frame-time">Frame: --ms</p>
+            <p id="particle-count">Particles: --</p>
+            <p id="visible-count">Visible: --</p>
+            <p id="culled-count">Culled: --</p>
+            <p id="draw-calls">Draw Calls: --</p>
+            <p id="memory-usage">Memory: --MB</p>
+            <p id="player-count" style="color: #0ff; margin-top: 8px;">👥 Players: 1 (solo)</p>
+        </div>
+    </div>
+
+    <div id="controls">
+        <h2>🎛️ Controls</h2>
+        <label>Spawn: <span id="spawn-rate-val">50</span>/f</label>
+        <input type="range" id="spawn-rate" min="0" max="2000" value="50" step="10">
+        
+        <label>Size: <span id="size-val">0.05</span></label>
+        <input type="range" id="particle-size" min="0.01" max="0.2" value="0.05" step="0.01">
+        
+        <label>Speed: <span id="speed-val">2.0</span>x</label>
+        <input type="range" id="particle-speed" min="0.1" max="10" value="2.0" step="0.1">
+        
+        <label>Life: <span id="lifetime-val">3.0</span>s</label>
+        <input type="range" id="particle-lifetime" min="0.5" max="10" value="3.0" step="0.5">
+        
+        <div style="margin-top: 8px; padding: 8px; background: rgba(0, 255, 0, 0.1); border: 1px solid #0f0; border-radius: 4px;">
+            <p style="margin: 0; font-size: 10px; color: #0ff;">✓ GPU Instancing: ACTIVE</p>
+            <p style="margin: 2px 0 0 0; font-size: 10px; color: #0ff;">✓ Multi-Core: ACTIVE</p>
+        </div>
+        
+        <button id="clear-particles">CLEAR ALL</button>
+    </div>
+
+    <script type="module">
+        import init, { set_spawn_rate, set_particle_size, set_particle_speed, set_particle_lifetime, set_instancing, set_workers, clear_all_particles, update_viewport } from './pkg/game_engine.js';
+
+        async function run() {
+            try {
+                await init();
+                document.getElementById('loading').classList.add('hidden');
+                console.log('✅ Engine loaded!');
+                
+                // Force GPU instancing and multi-core ON
+                set_instancing(true);
+                set_workers(true);
+                
+                handleResize();
+                window.addEventListener('resize', handleResize);
+                window.addEventListener('orientationchange', () => setTimeout(handleResize, 100));
+                
+                setupControls();
+            } catch (error) {
+                document.getElementById('loading').innerHTML = 
+                    `❌ Error:<br><small>${error}</small>`;
+                console.error('Failed:', error);
+            }
+        }
+
+        function handleResize() {
+            const canvas = document.querySelector('canvas');
+            if (!canvas) {
+                console.warn('Canvas not found yet');
+                return;
+            }
+            
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            
+            canvas.width = width;
+            canvas.height = height;
+            
+            const isMobile = width < 768;
+            update_viewport(width, height, isMobile);
+            
+            console.log(`📐 ${width}x${height} ${isMobile ? '📱' : '💻'}`);
+        }
+
+        function setupControls() {
+            document.getElementById('spawn-rate').addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                document.getElementById('spawn-rate-val').textContent = val;
+                set_spawn_rate(val);
+            });
+            
+            document.getElementById('particle-size').addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                document.getElementById('size-val').textContent = val.toFixed(2);
+                set_particle_size(val);
+            });
+            
+            document.getElementById('particle-speed').addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                document.getElementById('speed-val').textContent = val.toFixed(1);
+                set_particle_speed(val);
+            });
+            
+            document.getElementById('particle-lifetime').addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                document.getElementById('lifetime-val').textContent = val.toFixed(1);
+                set_particle_lifetime(val);
+            });
+            
+            document.getElementById('clear-particles').addEventListener('click', () => {
+                clear_all_particles();
+            });
+        }
+
+        run();
+    </script>
+</body>
+</html>
+
