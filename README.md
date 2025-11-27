@@ -208,6 +208,7 @@ This engine is built entirely from scratch to maximize learning:
 4. ✅ Input System
 5. ✅ Asset Pipeline
 6. ✅ Scene Management
+7. ✅ Networking (multiplayer)
 
 ### Future Enhancements
 - [ ] Instanced rendering for better particle performance
@@ -216,7 +217,6 @@ This engine is built entirely from scratch to maximize learning:
 - [ ] Shadow mapping
 - [ ] Post-processing effects
 - [ ] Audio system
-- [ ] Networking (multiplayer)
 
 ## 📝 License
 
