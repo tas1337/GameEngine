@@ -209,12 +209,12 @@ This engine is built entirely from scratch to maximize learning:
 5. ✅ Asset Pipeline
 6. ✅ Scene Management
 7. ✅ Networking (multiplayer)
+8. ✅ Instanced rendering for better particle performance
 
 ### Future Enhancements
-- [ ] Instanced rendering for better particle performance
 - [ ] Compute shaders for GPU-based particle physics
 - [ ] Advanced lighting (PBR)
-- [ ] Shadow mapping
+- [ ] Better Shadow mapping
 - [ ] Post-processing effects
 - [ ] Audio system
 
